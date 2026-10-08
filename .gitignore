@@ -1,0 +1,35 @@
+# Secrets
+.env
+!.env.example
+
+# Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Data (never committed)
+data/raw/
+data/processed/
+
+# Model caches
+.cache/
+models/
+hf_cache/
+
+# Third-party reference code
+swarm-reference/
+
+# Claude Code
+CLAUDE.md
+.claude/settings.local.json
+
+# Editor / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
