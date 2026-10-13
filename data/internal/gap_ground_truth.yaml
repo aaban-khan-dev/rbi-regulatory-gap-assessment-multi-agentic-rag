@@ -1,0 +1,188 @@
+# Planted coverage patterns for the synthetic internal policy corpus.
+# The company and its policies are fictional; the regulatory clauses are real.
+#
+# Required fields per obligation
+#   doc_id       RBI document the obligation comes from
+#   clause_path  the clause_path of the chunk in data/processed/<doc_id>.jsonl
+#                that holds the obligation. Every (doc_id, clause_path) pair
+#                here matches exactly one chunk.
+#   outcome      COVERED | PARTIAL | GAP | STALE
+#   policy_doc   the policy file (data/internal/<policy_doc>.md) that carries
+#                the control. For GAP: the document a reader would expect to
+#                cover it, which is silent on it.
+#   note         one line on what is missing or stale (non-COVERED only)
+#
+# Lookup fields
+#   sub_clause    the precise paragraph inside that chunk, when the obligation
+#                 is a sub-clause rather than the chunk's first clause. The
+#                 chunker files a chunk under its first clause, so sub-clauses
+#                 only appear in the chunk's `covers` list.
+#   chunk_id      the chunk itself
+#   stale_source  STALE only: the superseded or inapplicable source the policy
+#                 is anchored to, addressed the same way
+
+meta:
+  company: Kestrel Wallet Services Private Limited (brand KestrelPay), fictional
+  entity_type: non-bank PPI issuer
+  assessment_as_of: "2026-10-01"
+  assumptions:
+    - md-kyc-2016 as amended to 2025-08-14 is treated as the operative KYC text (md-ppi-2021 para 6.1 still applies it); pending decision.
+    - md-dpsc-2021 never bound a non-bank PPI issuer (its para 2) and is repealed on the assessment date; it appears only as a stale_source.
+
+obligations:
+
+  # ---------------- COVERED (16) ----------------
+  - {id: OBL-01, doc_id: md-ppi-2021, clause_path: "7.6",      outcome: COVERED, policy_doc: KST-PRD-001, chunk_id: "md-ppi-2021:0029"}
+  - {id: OBL-02, doc_id: md-ppi-2021, clause_path: "7.8",      outcome: COVERED, policy_doc: KST-AGT-001, sub_clause: "7.9(e)",     chunk_id: "md-ppi-2021:0030"}
+  - {id: OBL-03, doc_id: md-ppi-2021, clause_path: "9.1(ii)",  outcome: COVERED, policy_doc: KST-PRD-001, sub_clause: "9.1(ii)(d)", chunk_id: "md-ppi-2021:0050"}
+  - {id: OBL-04, doc_id: md-ppi-2021, clause_path: "9.2(c)",   outcome: COVERED, policy_doc: KST-PRD-001, sub_clause: "9.2(d)",     chunk_id: "md-ppi-2021:0052"}
+  - {id: OBL-05, doc_id: md-ppi-2021, clause_path: "12.3(ii)", outcome: COVERED, policy_doc: KST-FIN-003, chunk_id: "md-ppi-2021:0079"}
+  - {id: OBL-06, doc_id: md-ppi-2021, clause_path: "15.2",     outcome: COVERED, policy_doc: KST-SEC-001, chunk_id: "md-ppi-2021:0100"}
+  - {id: OBL-07, doc_id: md-ppi-2021, clause_path: "15.3(b)",  outcome: COVERED, policy_doc: KST-SEC-007, sub_clause: "15.3(c)",    chunk_id: "md-ppi-2021:0102"}
+  - {id: OBL-08, doc_id: md-ppi-2021, clause_path: "15.3(i)",  outcome: COVERED, policy_doc: KST-RSK-002, sub_clause: "15.3(k)",    chunk_id: "md-ppi-2021:0105"}
+  - {id: OBL-09, doc_id: md-ppi-2021, clause_path: "15.3(m)",  outcome: COVERED, policy_doc: KST-RSK-002, chunk_id: "md-ppi-2021:0107"}
+  - {id: OBL-10, doc_id: md-ppi-2021, clause_path: "17.8",     outcome: COVERED, policy_doc: KST-CX-004,  chunk_id: "md-ppi-2021:0130"}
+  - {id: OBL-11, doc_id: md-ppi-2021, clause_path: "18.2",     outcome: COVERED, policy_doc: KST-AUD-001, chunk_id: "md-ppi-2021:0134"}
+  - {id: OBL-12, doc_id: md-kyc-2016, clause_path: "10(g)",    outcome: COVERED, policy_doc: KST-AML-009, sub_clause: "10(i)",      chunk_id: "md-kyc-2016:0059"}
+  - {id: OBL-13, doc_id: md-kyc-2016, clause_path: "5A",       outcome: COVERED, policy_doc: KST-AML-001, chunk_id: "md-kyc-2016:0050"}
+  - {id: OBL-14, doc_id: md-kyc-2016, clause_path: "41",       outcome: COVERED, policy_doc: KST-AML-001, chunk_id: "md-kyc-2016:0143"}
+  - {id: OBL-15, doc_id: md-kyc-2016, clause_path: "46",       outcome: COVERED, policy_doc: KST-DAT-002, sub_clause: "46(a)",      chunk_id: "md-kyc-2016:0147"}
+  - {id: OBL-16, doc_id: md-kyc-2016, clause_path: "56(b)",    outcome: COVERED, policy_doc: KST-AML-004, chunk_id: "md-kyc-2016:0169"}
+
+  # ---------------- PARTIAL (6) ----------------
+  - id: OBL-17
+    doc_id: md-ppi-2021
+    clause_path: "6"
+    outcome: PARTIAL
+    policy_doc: KST-DAT-002
+    note: Wallet transaction ledger kept 5 years (generic PML period) instead of the PPI-specific 10 years.
+    sub_clause: "6.3"
+    chunk_id: "md-ppi-2021:0025"
+
+  - id: OBL-18
+    doc_id: md-ppi-2021
+    clause_path: "9.2(n)"
+    outcome: PARTIAL
+    policy_doc: KST-PRD-001
+    note: Rs 10,000 monthly cash-out cap is counted per channel (agent, ATM), not across all channels.
+    chunk_id: "md-ppi-2021:0058"
+
+  - id: OBL-19
+    doc_id: md-ppi-2021
+    clause_path: "12.3(ix)"
+    outcome: PARTIAL
+    policy_doc: KST-FIN-003
+    note: Quarterly escrow auditor certificate filed within 30 days of quarter end, not within a fortnight.
+    chunk_id: "md-ppi-2021:0089"
+
+  - id: OBL-20
+    doc_id: md-ppi-2021
+    clause_path: "13.6"
+    outcome: PARTIAL
+    policy_doc: KST-OPS-021
+    note: Inactivation, notice and re-verification present; inactive wallets are not reported to RBI.
+    chunk_id: "md-ppi-2021:0097"
+
+  - id: OBL-21
+    doc_id: md-kyc-2016
+    clause_path: "37"
+    outcome: PARTIAL
+    policy_doc: KST-AML-001
+    note: Customer risk ratings re-scored annually, not at least every six months.
+    sub_clause: "37(a)"
+    chunk_id: "md-kyc-2016:0123"
+
+  - id: OBL-22
+    doc_id: md-kyc-2016
+    clause_path: "40(d)"
+    outcome: PARTIAL
+    policy_doc: KST-AML-001
+    note: Remote-onboarded customers rated medium not high; enhanced monitoring ends at 180 days, not at in-person or video verification.
+    sub_clause: "40(f)"
+    chunk_id: "md-kyc-2016:0142"
+
+  # ---------------- GAP (5) ----------------
+  - id: OBL-23
+    doc_id: md-ppi-2021
+    clause_path: "14"
+    outcome: GAP
+    policy_doc: KST-RSK-002
+    note: No monitoring of repeated refunds into individual wallets anywhere in the corpus.
+    sub_clause: "14.3(d)"
+    chunk_id: "md-ppi-2021:0098"
+
+  - id: OBL-24
+    doc_id: md-ppi-2021
+    clause_path: "16.5"
+    outcome: GAP
+    policy_doc: KST-CX-001
+    note: No quarterly complaint report to RBI; near miss is the internal monthly complaint MIS to management.
+    sub_clause: "16.6"
+    chunk_id: "md-ppi-2021:0115"
+
+  - id: OBL-25
+    doc_id: md-ppi-2021
+    clause_path: "17.10"
+    outcome: GAP
+    policy_doc: KST-CX-004
+    note: Unauthorised-transaction cases are never reported to or reviewed by the Board or a Board committee.
+    sub_clause: "17.11"
+    chunk_id: "md-ppi-2021:0132"
+
+  - id: OBL-26
+    doc_id: md-kyc-2016
+    clause_path: "54"
+    outcome: GAP
+    policy_doc: KST-AML-001
+    note: No enhanced checks for FATF-listed jurisdictions; near miss is geography as one input to the risk band and the annual risk assessment.
+    chunk_id: "md-kyc-2016:0165"
+
+  - id: OBL-27
+    doc_id: md-kyc-2016
+    clause_path: "53"
+    outcome: GAP
+    policy_doc: KST-AML-009
+    note: UNSCR 1718 (DPRK) list not screened; near miss is daily screening against the other UN and UAPA lists.
+    chunk_id: "md-kyc-2016:0164"
+
+  # ---------------- STALE (4) ----------------
+  - id: OBL-28
+    doc_id: md-ppi-2021
+    clause_path: "15.6"
+    outcome: STALE
+    policy_doc: KST-SEC-012
+    note: Incident plan anchored to DPSC para 40; no immediate notification to RBI DPSS or CERT-In.
+    sub_clause: "15.7"
+    chunk_id: "md-ppi-2021:0109"
+    stale_source: {doc_id: md-dpsc-2021, clause_path: "40", chunk_id: "md-dpsc-2021:0049"}
+
+  - id: OBL-29
+    doc_id: md-ppi-2021
+    clause_path: "18.3(b)"
+    outcome: STALE
+    policy_doc: KST-SEC-015
+    note: Rogue-app and phishing monitoring done in-house under DPSC para 29; no external takedown service subscribed.
+    sub_clause: "18.3(c)"
+    chunk_id: "md-ppi-2021:0136"
+    stale_source: {doc_id: md-dpsc-2021, clause_path: "29", chunk_id: "md-dpsc-2021:0033"}
+
+  - id: OBL-30
+    doc_id: md-kyc-2016
+    clause_path: "38"
+    outcome: STALE
+    policy_doc: KST-AML-006
+    note: SOP predates the June 2025 low-risk proviso; payments pause at the due date for every risk band instead of a one-year grace for low-risk individuals.
+    sub_clause: "38 (proviso before 38(a))"
+    chunk_id: "md-kyc-2016:0124"
+    stale_source: {doc_id: amd-kyc-2025-06, clause_path: "4(i)", chunk_id: "amd-kyc-2025-06:0005"}
+
+  - id: OBL-31
+    doc_id: md-kyc-2016
+    clause_path: "18(iii)(b)"
+    outcome: STALE
+    policy_doc: KST-AML-004
+    note: V-CIP procedure predates the August 2025 insertion; the liveness step has no alternative for persons with special needs.
+    sub_clause: "18(iii)(b)(i)"
+    chunk_id: "md-kyc-2016:0086"
+    # 4(v) is in this chunk's text but not its `covers` list: the chunker merges amendment items (iii)-(vi) into one blob (Phase 2 known limitation).
+    stale_source: {doc_id: amd-kyc-2025-08, clause_path: "4", sub_clause: "4(v)", chunk_id: "amd-kyc-2025-08:0004"}
