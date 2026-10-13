@@ -2,3 +2,5 @@
 torch
 pydantic-settings
 google-genai
+pyyaml
+requests

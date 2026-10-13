@@ -1,0 +1,87 @@
+documents:
+- doc_id: md-ppi-2021
+  title: Master Directions on Prepaid Payment Instruments (PPIs)
+  circular_number: RBI/DPSS/2021-22/82
+  reference_number: CO.DPSS.POLC.No.S-479/02.14.006/2021-22
+  issue_date: '2021-08-27'
+  amended_up_to: '2026-09-30'
+  effective_from: '2021-08-27'
+  effective_to: null
+  status: in_force
+  document_type: master_direction
+  amends: null
+  url: https://rbidocs.rbi.org.in/rdocs/notification/PDFs/82MDPPIS2708202181CF0A6FCD1B47B88CAE8E92A228B160.PDF
+  landing_page: https://www.rbi.org.in/Scripts/BS_ViewMasDirections.aspx?id=12156
+  sha256: 39ee8614df7676631433fb964d6122a35b689ac4a0ecb742de5c74df13b3f540
+- doc_id: md-kyc-2016
+  title: Master Direction - Know Your Customer (KYC) Direction, 2016
+  circular_number: RBI/DBR/2015-16/18
+  reference_number: DBR.AML.BC.No.81/14.01.001/2015-16
+  issue_date: '2016-02-25'
+  amended_up_to: '2025-08-14'
+  effective_from: '2016-02-25'
+  effective_to: null
+  status: repealed
+  document_type: master_direction
+  amends: null
+  url: https://rbidocs.rbi.org.in/rdocs/notification/PDFs/MD18KYCF6E92C82E1E1419D87323E3869BC9F13.PDF
+  landing_page: https://www.rbi.org.in/Scripts/BS_ViewMasDirections.aspx?id=11566
+  sha256: 7ee5c336f273be6970e41f11c57aa9b5eb8ed31c433aeeca0831110e775fdab9
+- doc_id: md-dpsc-2021
+  title: Master Direction on Digital Payment Security Controls
+  circular_number: RBI/2020-21/74
+  reference_number: DoS.CO.CSITE.SEC.No.1852/31.01.015/2020-21
+  issue_date: '2021-02-18'
+  amended_up_to: null
+  effective_from: '2021-08-18'
+  effective_to: '2025-11-28'
+  status: repealed
+  document_type: master_direction
+  amends: null
+  url: https://rbidocs.rbi.org.in/rdocs/notification/PDFs/MD7493544C24B5FC47D0AB12798C61CDB56F.PDF
+  landing_page: https://website.rbi.org.in/web/rbi/-/notifications/master-direction-on-digital-payment-security-controls-12032
+  sha256: e22b96e4aa3775b1668c7740ab9b9804953c261f5bd1327765dcff0268c3fab2
+- doc_id: amd-kyc-2024-11
+  title: Amendment to the Master Direction - Know Your Customer (KYC) Direction, 2016
+  circular_number: RBI/2024-2025/87
+  reference_number: DOR.AML.REC.49/14.01.001/2024-25
+  issue_date: '2024-11-06'
+  status: in_force
+  document_type: amendment
+  amends: md-kyc-2016
+  landing_page: https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12746
+  url: https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NOTI87296ED881E788420F971BE7ACDD35EAFE.PDF
+  sha256: c050b05cae9719159bbc0a5056d75466cb9723b77ee81ae313709317fbe8641d
+- doc_id: amd-kyc-2025-06
+  title: Reserve Bank of India (Know Your Customer (KYC)) (Amendment) Directions, 2025
+  circular_number: RBI/2025-26/51
+  reference_number: DOR.AML.REC.30/14.01.001/2025-26
+  issue_date: '2025-06-12'
+  status: in_force
+  document_type: amendment
+  amends: md-kyc-2016
+  landing_page: https://rbi.org.in/Scripts/BS_CircularIndexDisplay.aspx?Id=12866
+  url: https://rbidocs.rbi.org.in/rdocs/Notification/PDFs/NT517A41C334FB0A42BC9D58A37DE3793F4E.PDF
+  sha256: feccb870209a187c6b4e98062f1af863a287428e08706ce17fe3d59597311242
+- doc_id: amd-kyc-2025-08
+  title: Reserve Bank of India (Know Your Customer (KYC)) (2nd Amendment) Directions, 2025
+  circular_number: RBI/2025-26/75
+  reference_number: DOR.AML.REC.46/14.01.001/2025-26
+  issue_date: '2025-08-14'
+  status: in_force
+  document_type: amendment
+  amends: md-kyc-2016
+  landing_page: https://rbi.org.in/Scripts/BS_CircularIndexDisplay.aspx?Id=12893
+  url: https://rbidocs.rbi.org.in/rdocs/Notification/PDFs/75NTAB0DE83945B84839B97066E75CF26FF7.PDF
+  sha256: b1cc7bd71ea21512d009a6765c245d3a8a47f1d975ef49f1cbb72c19fb3ea979
+- doc_id: amd-ppi-2024-02
+  title: Amendment to Master Direction on Prepaid Payment Instruments
+  circular_number: RBI/2023-24/126
+  reference_number: CO.DPSS.POLC.No.S1092/02-14-006/2023-2024
+  issue_date: '2024-02-23'
+  status: in_force
+  document_type: amendment
+  amends: md-ppi-2021
+  landing_page: https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12612
+  url: https://rbidocs.rbi.org.in/rdocs/notification/PDFs/NT12622B522112DA3446BA036B01770200F7D.PDF
+  sha256: c184ca8deef74c62575e1cbdfd70b58a187972e57c221124aae9f3444a8a219a
