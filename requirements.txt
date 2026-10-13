@@ -4,3 +4,5 @@ pydantic-settings
 google-genai
 pyyaml
 requests
+docling
+pypdfium2
