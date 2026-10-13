@@ -4,7 +4,7 @@ Updated at the end of every phase. A new session reads this first.
 
 ## Current state
 
-Phases 0, 1 and 2 complete. Phase 0: config default is `gemini-3.8-flash`; `--live` unconfirmed after a 503. Phase 1: seven PDFs on disk, hashes pinned. Phase 2: seven chunk files in `data/processed/` (see Phase 2). **Open decision for Mohammad:** three amendments are stamped Withdrawn but the manifest says `in_force` (see Phase 2). Next: Phase 3 (synthetic internal corpus).
+Phases 0, 1 and 2 complete. Phase 0: config default is `gemini-3.8-flash`; `--live` unconfirmed after a 503. Phase 1: seven PDFs on disk, hashes pinned. Phase 2: seven chunk files in `data/processed/` (see Phase 2). **Open decision for Mohammad:** three amendments are stamped Withdrawn but the manifest says `in_force` (see Phase 2). Phase 3 in progress: ground truth and 18 policies written, overlap check passes. **Not yet done:** parsing the policies through the chunking pipeline (Phase 3 exit criterion). Four more open decisions are listed under Phase 3.
 
 ## Phase 0 — Repo and environment
 
@@ -146,4 +146,75 @@ Expected: the summary tables above and seven `.jsonl` files in `data/processed/`
 
 Nothing untracked needs flagging: `data/processed/` and `data/raw/` are gitignored.
 
-## Next: Phase 3 — Synthetic internal policy corpus
+## Phase 3 — Synthetic internal policy corpus (in progress)
+
+**Status:** the design (Stage A) and the policy documents (Stage B) are done. Not yet done: parsing the policies through the chunking pipeline, which the phase plan's exit criterion requires. `scripts/build_chunks.py` is driven by the manifest and reads PDFs only, so the Markdown policies need a new input path.
+
+**Built**
+- `data/internal/gap_ground_truth.yaml`: 31 real obligations, each with `doc_id`, `clause_path`, `outcome`, `policy_doc`, and a one-line `note` for non-covered rows. Every `(doc_id, clause_path)` pair, stale sources included, is the `clause_path` of exactly one chunk in `data/processed/`. Lookup fields: `sub_clause` (the precise paragraph when the obligation sits inside a chunk filed under an earlier clause), `chunk_id`, and `stale_source` on STALE rows. Split: 16 COVERED, 6 PARTIAL, 5 GAP, 4 STALE. By source: 20 from md-ppi-2021, 11 from md-kyc-2016. md-dpsc-2021 appears only as a stale source.
+- 18 policy documents, `data/internal/KST-*.md`, for the fictional non-bank PPI issuer Kestrel Wallet Services (KestrelPay). They share one set of fictional systems (Sentinel, Rules Console, Ledger Core, Onboard, Watchlist Hub, CareDesk, Notify, Vault, TreasuryDesk), have numbered paragraphs, and carry a synthetic-document banner. Each contains content unrelated to the planted obligations, so the planted controls are not the only text.
+- `scripts/check_policy_overlap.py`, three reports:
+  1. every run of 5+ consecutive words a policy shares with any RBI chunk (all seven documents), allowing only an explicit list of statute and list names;
+  2. the longest run each ground-truth row's policy shares with that row's own chunk;
+  3. keyword overlap for COVERED rows: the chunk's distinctive words (lowercase alphabetic, 3+ letters, stopwords removed, crude plural fold, numbers excluded) against only that row's `policy_doc`, as a plain share and an IDF-weighted share (IDF over all RBI chunks).
+
+  Exit 1 if any run is flagged or either median exceeds 0.4.
+
+**Files added**: `data/internal/gap_ground_truth.yaml`, `data/internal/KST-*.md` (18), `scripts/check_policy_overlap.py`
+**Files changed**: `regassess/config.py` (new `internal_dir` setting), `README.md` (synthetic corpus disclosure), `docs/PROGRESS.md`
+
+**Results (measured, runs of `check_policy_overlap.py`)**
+- Phrase reuse, corpus-wide: 0 flagged runs across 18 policies; 1 allowed name match (KST-AML-009, the 2007 Terrorism Order). The first run, before any rewording, had 15 flagged runs. Two of them were real echoes of other clauses: "in english hindi and the" (PPI 16.1) and "with full details of the" (KYC 52(h)). All 15 were reworded rather than allowlisted, except "ministry of home affairs".
+- Keyword overlap, COVERED rows against their own policy_doc. **Before:** median plain 0.35, median IDF 0.33; worst five by plain OBL-06 0.57, OBL-11 0.47, OBL-04 0.44, OBL-16 0.42, OBL-05 0.41. The 0.4 median rule did not trigger, but those five sections were reworded anyway (SEC-001, AUD-001, PRD-001, AML-004, FIN-003), keeping the controls themselves unchanged. **After:** median plain 0.30, median IDF 0.25; worst five by plain OBL-11 0.39, OBL-01 0.38, OBL-10 0.37, OBL-07 0.34, OBL-16 0.33.
+- The "before" figures were taken after the ground-truth fix below, so both runs score the same 16 rows.
+- What remains shared is mostly domain nouns a real policy must use (CERT-In, auditor, escrow, CKYCR, PEP, wallet, cash). The header table ("Approved by", "Last reviewed") also adds "approved" and "review" to every policy. It was left alone as normal policy formatting.
+
+**Ground-truth fix (after review)**: 18 obligations and 2 stale sources had a `clause_path` that is not any chunk's `clause_path`. The addresses were real paragraph numbers read from the chunk text, but the chunker files a chunk under its first clause, so sub-clauses only appear in `covers`. 38(e) and amd-kyc-2025-06 4(iii) appeared nowhere in the chunk metadata (chunker mislabel). Fixes:
+- 15 rows: `clause_path` now points at the containing chunk, with the precise paragraph in `sub_clause`.
+- 4 rows replaced because their only available path was wrong or ambiguous:
+  - OBL-13: KYC 12(a) → 5A (path `12` matched 2 chunks);
+  - OBL-26: KYC 8(b) → 54, a GAP on FATF-listed jurisdictions (`8` matched 3);
+  - OBL-30: KYC 38(e) → 38, the June 2025 low-risk proviso, still STALE in KST-AML-006;
+  - OBL-31: KYC 11 → 18(iii)(b), the August 2025 V-CIP liveness insertion, STALE in KST-AML-004 (`11` matched 18 chunks).
+- KST-AML-001 §3 was extended to cover 5A. KST-AML-004 gained a V-CIP procedure section and was backdated to 2025-04-22 so it predates amd-kyc-2025-08.
+
+**Decisions**
+- Company is a non-bank PPI issuer. md-dpsc-2021 para 2 limits DPSC to SCBs (excl. RRBs), SFBs, Payments Banks and credit-card NBFCs, so no DPSC clause is a binding obligation. The two DPSC-anchored policies (KST-SEC-012, KST-SEC-015) are STALE rows whose binding obligation is a PPI clause.
+- KYC STALE rows use amendments that insert text (amd-kyc-2025-06 4(i) adds the low-risk proviso to 38; amd-kyc-2025-08 4(v) inserts the special-needs sentence into the V-CIP procedure), so the pre-amendment wording can be read directly from the corpus. A 56(h) row was dropped: that amendment rewrites the paragraph, and the old text is not in the corpus.
+- The ground truth requires each `(doc_id, clause_path)` to match exactly one chunk, not just exist. Retrieval scoring in Phase 7 can then join on it without false matches from Annex chunks that reuse paragraph numbers.
+- GAP rows name the document a reader would expect to cover the obligation (`policy_doc`), which is silent on it. Three GAP rows have a near miss: a related control that must not be credited.
+- Stale documents show it in their metadata (old "last reviewed" date, overdue next review). The DPSC-anchored ones also name DPSC under "Regulatory basis".
+- No new dependency: the overlap check uses the standard library plus pyyaml.
+
+**Open decisions for Mohammad**
+1. `assessment_as_of: 2026-10-01` and the KYC assumption. The manifest marks md-kyc-2016 repealed, and its successors are not in the corpus. The ground truth treats it, as amended to 2025-08-14, as the operative KYC text, citing md-ppi-2021 para 6.1. Phase 10's as-of filter will drop every KYC chunk while the manifest says `repealed`.
+2. md-dpsc-2021 repeal date: manifest `effective_to: 2025-11-28`; README and `docs/phase1_corpus.md` say 2026-07-31. Doesn't affect Phase 3 (both precede the as-of date); matters for Phase 10.
+3. Chunker mislabels (Phase 2 fix, now worked around in the ground truth):
+   - md-kyc-2016 paragraphs 38(c), (d) and (e) come out as `38(b)(ii)(…)`;
+   - Annex chunks reuse paragraph numbers (`11` matches 18 chunks, `8` 3, `12` 2);
+   - amendment sub-items are merged into one chunk (amd-kyc-2025-06 4(ii)/(iii) inside `4(i)`; amd-kyc-2025-08 4(iii)–(vi) inside `4`).
+
+   Every obligation was moved to an unambiguous chunk, but the Phase 6 gold set will hit the same problem.
+4. Whether Phase 3's parse step should extend `build_chunks.py` to Markdown or use a separate script. Either way, the synthetic banner should be stripped at parse time.
+
+**Deferred**
+- `CLAUDE.md` says the venv is `venv`; it is `.venv`.
+- The company name has not been checked against RBI's list of authorised PPI issuers.
+
+**Verify**
+```
+.\.venv\Scripts\python.exe scripts\check_policy_overlap.py
+```
+Expected: `ok` for all 18 policies, keyword-overlap `median plain 0.30, median idf 0.25`, `0 flagged run(s) across 18 policies`, exit code 0.
+
+**Suggested commit breakdown**
+1. `add internal_dir setting to config`: `regassess/config.py`
+2. `add planted-gap ground truth for synthetic policy corpus`: `data/internal/gap_ground_truth.yaml`
+3. `add synthetic product, agent, escrow and dormancy policies`: `data/internal/KST-PRD-001.md`, `KST-AGT-001.md`, `KST-FIN-003.md`, `KST-OPS-021.md`
+4. `add synthetic fraud, security and audit policies`: `data/internal/KST-RSK-002.md`, `KST-SEC-001.md`, `KST-SEC-007.md`, `KST-SEC-012.md`, `KST-SEC-015.md`, `KST-AUD-001.md`
+5. `add synthetic kyc, aml, records and vendor policies`: `data/internal/KST-AML-001.md`, `KST-AML-004.md`, `KST-AML-006.md`, `KST-AML-009.md`, `KST-DAT-002.md`, `KST-VND-001.md`
+6. `add synthetic grievance and customer liability policies`: `data/internal/KST-CX-001.md`, `KST-CX-004.md`
+7. `add policy wording overlap check`: `scripts/check_policy_overlap.py`
+8. `document synthetic policy corpus`: `README.md`, `docs/PROGRESS.md`
+
+Nothing untracked needs flagging: `data/internal/` holds only committed design files, and no raw or processed data was touched.
