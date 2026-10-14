@@ -4,7 +4,7 @@ Updated at the end of every phase. A new session reads this first.
 
 ## Current state
 
-Phases 0, 1 and 2 complete. Phase 0: config default is `gemini-3.8-flash`; `--live` unconfirmed after a 503. Phase 1: seven PDFs on disk, hashes pinned. Phase 2: seven chunk files in `data/processed/` (see Phase 2). **Open decision for Mohammad:** three amendments are stamped Withdrawn but the manifest says `in_force` (see Phase 2). Phase 3 in progress: ground truth and 18 policies written, overlap check passes. **Not yet done:** parsing the policies through the chunking pipeline (Phase 3 exit criterion). Four more open decisions are listed under Phase 3.
+Phases 0, 1 and 2 complete. Phase 0: config default is `gemini-3.8-flash`; `--live` unconfirmed after a 503. Phase 1: seven PDFs on disk, hashes pinned. Phase 2: seven chunk files in `data/processed/` (see Phase 2). **Open decision for Mohammad:** three amendments are stamped Withdrawn but the manifest says `in_force` (see Phase 2). Phase 4 complete (pgvector index and naive CLI search, see Phase 4). Phase 3 in progress: ground truth and 18 policies written, overlap check passes. **Not yet done:** parsing the policies through the chunking pipeline (Phase 3 exit criterion). Four more open decisions are listed under Phase 3.
 
 ## Phase 0 — Repo and environment
 
@@ -218,3 +218,58 @@ Expected: `ok` for all 18 policies, keyword-overlap `median plain 0.30, median i
 8. `document synthetic policy corpus`: `README.md`, `docs/PROGRESS.md`
 
 Nothing untracked needs flagging: `data/internal/` holds only committed design files, and no raw or processed data was touched.
+
+## Phase 4 — Vector store and naive retrieval (complete)
+
+**Built**
+- `docker-compose.yml`: `pgvector/pgvector:0.8.0-pg16` (pinned), host port 5433, credentials from `.env`, named volume `pgdata`, healthcheck.
+- `regassess/db.py`: `get_connection()` (creates the `vector` extension, registers the type) and `init_schema()`. Table `chunks` with real columns: `chunk_id` (PK), `corpus` (CHECK regulation/internal), `doc_id`, `clause_path`, `text`, `embedding vector(384)`, `status`, `effective_from`, `effective_to`, `document_type`, `amends`, `page_start`, `page_end`. Plain btree indexes on `corpus` and `doc_id`; **no vector index** (exact scan over 693 rows).
+- `regassess/chunking_internal.py`: one chunk per `##` section of `data/internal/KST-*.md`. `doc_id` = filename stem; `clause_path` = `<title> > <section heading>`; `effective_from` read from the header table; `status` = `in_force`, `document_type` = `policy`. Synthetic banner and header table are not in chunk text. Oversize sections would split at numbered paragraphs; none exceeds the 2000-char cap (max 1444), so none did.
+- `regassess/embeddings.py`: bge-small-en-v1.5, CPU, batched, normalized. The bge query instruction prefix is added to queries only.
+- `scripts/build_index.py`: loads both corpora, embeds, and replaces the table with TRUNCATE + insert in one transaction (a failed run keeps the old index). Run twice; counts identical.
+- `scripts/query.py`: `query "<text>" [--k 10]`; prints rank, cosine score, corpus, doc_id, clause_path, first 150 chars.
+
+**Files added**: `docker-compose.yml`, `.env.example`, `regassess/db.py`, `regassess/chunking_internal.py`, `regassess/embeddings.py`, `scripts/build_index.py`, `scripts/query.py`
+**Files changed**: `regassess/config.py` (Postgres settings, `database_url`), `requirements.txt`, `docs/PROGRESS.md`. `.env` (gitignored) gained `POSTGRES_*` keys.
+
+**Measured**: 693 chunks loaded: regulation 568 (7 docs), internal 125 (18 docs). The regulation count equals the sum of the seven Phase 2 files.
+
+**Observations from the three required queries (read by me, not scored; no metrics yet)**
+- "KYC requirements for opening a small PPI account": top hits are PPI 15.4, 9.1(i), 9.1(ii), KYC 24. Plausible. No internal policy in the top 10.
+- "two factor authentication for wallet transactions": 7 of the top 10 are DPSC (md-dpsc-2021), which the Phase 3 notes say does not bind a non-bank PPI issuer, and which the manifest marks repealed. PPI 15.3(b) is rank 2. The acronym table (`clause_path` null) is rank 6. No internal security policy appears. This is the stale/inapplicable-document problem that Phase 10 targets.
+- "how long must transaction records be retained": rank 1 is internal KST-DAT-002 (2. Principles), not the retention schedule table (rank 5). KYC 46 and 46(b) are in the top 4. Mixed corpora in one ranking means a regulation question gets internal answers; later phases will query the corpora separately.
+
+**Decisions**
+- New dependency `sentence-transformers`: runs bge-small locally.
+- New dependency `psycopg[binary]`: Postgres driver (v3).
+- New dependency `pgvector`: registers the `vector` type with psycopg.
+- New dependency `numpy`: embeddings are numpy arrays that the pgvector adapter takes; imported directly.
+- `postgres_password` has no default in `config.py`: a missing one fails at import.
+- Regulation chunks embed their raw text only (no heading prepended); that is Phase 10's contextual retrieval.
+- `status`/`effective_*` are loaded exactly as the chunk files carry them; the Phase 2 Withdrawn-stamp manifest discrepancy is untouched and nothing filters on it yet.
+- Both corpora share one table and one ranking in `query.py`; there is no corpus filter, by design for the baseline.
+
+**Deferred**
+- ANN index (HNSW) until row count or latency justifies it.
+- Hugging Face unauthenticated-download warning and Windows symlink warning on model load; harmless.
+
+**Verify**
+```
+docker compose up -d
+.\.venv\Scripts\python.exe scriptsuild_index.py
+.\.venv\Scripts\python.exe scripts\query.py "how long must transaction records be retained" --k 10
+```
+Expected: `internal 125 chunks 18 documents`, `regulation 568 chunks 7 documents`, then ten ranked rows.
+
+**Suggested commit breakdown**
+1. `add embedding, postgres and numpy dependencies`: `requirements.txt`
+2. `add postgres settings to config`: `regassess/config.py`, `.env.example`
+3. `add pgvector docker compose service`: `docker-compose.yml`
+4. `add chunks table schema and connection helper`: `regassess/db.py`
+5. `add heading-based chunker for internal policies`: `regassess/chunking_internal.py`
+6. `add local bge-small embedding wrapper`: `regassess/embeddings.py`
+7. `add rebuildable index loader`: `scripts/build_index.py`
+8. `add naive top-k query cli`: `scripts/query.py`
+9. `update progress for phase 4`: `docs/PROGRESS.md`
+
+`config.py` was already staged before this session with the Phase 3 `internal_dir` change (together with `scripts/check_policy_overlap.py`); check `git diff --cached` so commit 2 does not swallow it. Nothing untracked needs flagging: `.env` is gitignored, and no `data/raw/`, `data/processed/` or model cache is involved.
