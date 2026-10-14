@@ -9,8 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from regassess.db import get_connection  # noqa: E402
-from regassess.embeddings import embed_query  # noqa: E402
+from regassess.retrieval import search  # noqa: E402
 
 
 def main() -> None:
@@ -19,20 +18,12 @@ def main() -> None:
     parser.add_argument("--k", type=int, default=10)
     args = parser.parse_args()
 
-    qvec = embed_query(args.query)
-
-    # <=> is pgvector's cosine distance, so similarity = 1 - distance.
-    sql = (
-        "SELECT corpus, doc_id, clause_path, text, 1 - (embedding <=> %s) AS score "
-        "FROM chunks ORDER BY embedding <=> %s LIMIT %s"
-    )
-    with get_connection() as conn:
-        rows = conn.execute(sql, (qvec, qvec, args.k)).fetchall()
+    hits = search(args.query, k=args.k)
 
     print(f"Query: {args.query}\n")
-    for rank, (corpus, doc_id, path, text, score) in enumerate(rows, 1):
-        snippet = " ".join(text.split())[:150]
-        print(f"{rank:>2}. {score:.4f}  {corpus:<10} {doc_id}  [{path}]")
+    for rank, h in enumerate(hits, 1):
+        snippet = " ".join(h["text"].split())[:150]
+        print(f"{rank:>2}. {h['score']:.4f}  {h['corpus']:<10} {h['doc_id']}  [{h['clause_path']}]")
         print(f"    {snippet}")
 
 

@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     processed_dir: Path = PROJECT_ROOT / "data" / "processed"
     # Synthetic internal policy corpus and its planted-gap ground truth (committed).
     internal_dir: Path = PROJECT_ROOT / "data" / "internal"
+    # Generated gap registers.
+    output_dir: Path = PROJECT_ROOT / "data" / "output"
+    # On-disk cache of successful LLM responses.
+    cache_dir: Path = PROJECT_ROOT / "data" / "cache"
 
     # No default: a missing key fails loudly at import instead of at the first API call.
     gemini_api_key: str
@@ -41,5 +45,5 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-for _dir in (settings.data_dir, settings.raw_dir, settings.processed_dir):
+for _dir in (settings.data_dir, settings.raw_dir, settings.processed_dir, settings.output_dir, settings.cache_dir):
     _dir.mkdir(parents=True, exist_ok=True)
