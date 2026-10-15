@@ -7,7 +7,7 @@ writing one function and one entry in VARIANTS; the harness is not touched.
 
 from typing import Callable
 
-from regassess.retrieval import search
+from regassess.retrieval import bm25_config, hybrid_config, hybrid_search, keyword_search, search
 
 
 def naive(query: str, as_of: str | None, corpus: str, depth: int) -> list[dict]:
@@ -19,6 +19,37 @@ def naive(query: str, as_of: str | None, corpus: str, depth: int) -> list[dict]:
     return [{"chunk_id": r["chunk_id"], "score": r["score"]} for r in search(query, k=depth, corpus=corpus)]
 
 
+def hybrid(query: str, as_of: str | None, corpus: str, depth: int) -> list[dict]:
+    """Phase 8: vector + BM25, fused by RRF. as_of is ignored, as in naive: no date
+    logic until Phase 10, so stale_rate is not expected to move."""
+    return hybrid_search(query, k=depth, corpus=corpus)
+
+
+def bm25_only(query: str, as_of: str | None, corpus: str, depth: int) -> list[dict]:
+    """Keyword search alone, no fusion: does the BM25 list carry any signal by itself?
+
+    Chunks sharing no token with the query are excluded, so a ranking can be shorter than
+    depth. as_of is ignored."""
+    return keyword_search(query, k=depth, corpus=corpus)
+
+
+def hybrid_nostop(query: str, as_of: str | None, corpus: str, depth: int) -> list[dict]:
+    """The hybrid variant with NLTK English stopwords removed on the BM25 side (query and
+    documents). The vector side is untouched. Its own ablation row; `hybrid` is unchanged."""
+    return hybrid_search(query, k=depth, corpus=corpus, drop_stopwords=True)
+
+
 VARIANTS: dict[str, Callable[[str, str | None, str, int], list[dict]]] = {
     "naive": naive,
+    "hybrid": hybrid,
+    "bm25_only": bm25_only,
+    "hybrid_nostop": hybrid_nostop,
+}
+
+# Settings that change a variant's numbers, written into every run file. A variant with
+# nothing to record is absent.
+VARIANT_CONFIG: dict[str, Callable[[], dict]] = {
+    "hybrid": hybrid_config,
+    "bm25_only": bm25_config,
+    "hybrid_nostop": lambda: hybrid_config(drop_stopwords=True),
 }

@@ -25,15 +25,30 @@ def fmt(value: float | None) -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("runs", nargs="+", type=Path, help="run files written by run_eval.py")
+    parser.add_argument("--k", type=int, help="score every run at this cutoff instead of its own k (at most its stored depth)")
     args = parser.parse_args()
 
     runs = [json.loads(p.read_text(encoding="utf-8")) for p in args.runs]
+    if args.k:
+        for r in runs:
+            if args.k > r["depth"]:
+                parser.error(f"--k {args.k} exceeds the stored depth {r['depth']} of a run")
+            r["k"] = args.k
     summaries = [summarize(r["items"], r["k"]) for r in runs]
 
     # Different gold sets or cutoffs make the columns incomparable; say so loudly.
     for field, label in (("gold_sha256", "gold set"), ("k", "k"), ("embedding_model", "embedding model"), ("query_prefix", "query prefix"), ("parent_context", "parent_context flag")):
         if len({json.dumps(r.get(field)) for r in runs}) > 1:
             print(f"WARNING: runs differ in {label}; columns are not directly comparable.\n")
+
+    # Two runs of the same variant with different settings (e.g. rrf_k) are not
+    # comparable as "the same configuration". Older runs have no variant_config.
+    by_variant: dict[str, set[str]] = {}
+    for r in runs:
+        by_variant.setdefault(r["variant"], set()).add(json.dumps(r.get("variant_config", {}), sort_keys=True))
+    for variant, configs in by_variant.items():
+        if len(configs) > 1:
+            print(f"WARNING: runs of variant '{variant}' differ in variant_config; they are not the same configuration.\n")
 
     # Column labels: the file name without its trailing timestamp, so a renamed run
     # (naive_preheadings_<ts>.json) reads as "naive_preheadings" next to "naive".
