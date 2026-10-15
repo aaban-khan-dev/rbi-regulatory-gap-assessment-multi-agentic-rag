@@ -36,10 +36,10 @@ measured numbers by Phase 7.
 
 ## Stage C — Measurement
 
-- **6. Gold set** — 80-100 hand-labelled items: retrieval questions with
+- **6. Gold set** — 80-100 LLM-drafted and human-reviewed items: retrieval questions with
   ground-truth clause IDs, obligation-extraction cases with expected fields,
   gap-classification cases with expected verdicts. Labelling helper script.
-  *Exit: gold JSONL committed. Slow and tedious; non-negotiable.*
+  *Exit: gold set (YAML) committed. Slow and tedious; non-negotiable.*
 - **7. Evaluation harness** — one script, one config flag, runs any retrieval
   configuration against the gold set; recall@10, MRR, nDCG. LLM response
   caching so re-runs don't burn free-tier quota.

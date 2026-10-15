@@ -1,6 +1,21 @@
 # Phase 1 corpus — final
 
-Seven documents. Verified against RBI's live pages on 2026-10-08.
+Seven documents. Verified against RBI's live pages on 2026-10-08. An eighth,
+the 2018 version of the KYC Master Direction (section 2a), was added in
+Phase 6.
+
+**Later changes (Phase 6).** `data/corpus_manifest.yaml` is the authority on
+dates and status. The YAML blocks below record Phase 1 as specified; these
+values have since changed:
+- `md-kyc-2016`: `status: repealed`, `effective_from: 2025-08-14` (the date of
+  this consolidated text), `effective_to: 2025-11-28` (repeal).
+- The three KYC amendments: `status: repealed`, `effective_from` = issue date,
+  `effective_to: 2025-11-28` (the parent's). `amd-ppi-2024-02`:
+  `effective_from: 2024-02-23`, `effective_to: null`.
+- `md-dpsc-2021`: `effective_to: 2026-07-31`, as below. The manifest briefly
+  held 2025-11-28 in error.
+
+The date conventions are explained in `docs/EVALUATION.md`.
 
 Scope note: RBI reorganised several Master Directions into entity-specific
 successors during 2025-26. Those successors are deliberately OUT of this
@@ -60,6 +75,36 @@ Note: entity-specific KYC Directions dated 2025-11-28 exist and are more
 recently revised. This document's status is recorded as in_force on the basis
 that RBI still lists it; if its PDF carries a "Withdrawn" watermark, change
 status to `repealed` and set effective_to.
+
+### 2a. Know Your Customer, 2018 version — SUPERSEDED (added in Phase 6)
+
+```yaml
+doc_id: md-kyc-2016-v2018
+title: Master Direction - Know Your Customer (KYC) Direction, 2016 (Updated as on July 12, 2018)
+circular_number: RBI/DBR/2015-16/18
+reference_number: DBR.AML.BC.No.81/14.01.001/2015-16
+issue_date: 2016-02-25
+amended_up_to: 2018-07-12
+effective_from: 2018-07-12
+effective_to: 2019-05-29
+status: superseded
+document_type: master_direction
+amends: null
+url: https://rbidocs.rbi.org.in/rdocs/notification/PDFs/18MDKYCD8E68EB13629A4A82BE8E06E606C57E57.PDF
+landing_page: https://www.rbi.org.in/Scripts/BS_ViewMasDirections.aspx?id=10292
+sha256: 5e90953071d82175d8040d7c801d70e2944689ab8a3a649fef62af01b657c09e
+```
+
+The same instrument as section 2, as consolidated on 2018-07-12. `effective_to`
+is 2019-05-29, the next revision date listed in the current KYC document's
+header (see the revision history above). 63 pages, no Withdrawn stamp.
+
+Kept deliberately: the same paragraph exists in two versions with different
+wording, so an as-of-date query for 2019-01-01 should return this text and a
+query for 2025-10-01 should return section 2's. Paragraph numbers differ
+between the versions from 52 on (FATF jurisdictions are 55 here and 54 in the
+current text). Checked against the PDF: this is real renumbering, not a parsing
+error.
 
 ### 3. Digital Payment Security Controls — REPEALED
 

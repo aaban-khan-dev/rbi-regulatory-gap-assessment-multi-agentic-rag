@@ -59,7 +59,7 @@ Synthesis is disclosed plainly in the README.
 
 ## Measurement layer — the core differentiator
 
-Hand-labelled gold set of 80-100 items with ground-truth clause IDs.
+LLM-drafted and human-reviewed gold set of 80-100 items with ground-truth clause IDs.
 
 - Retrieval: recall@10, MRR, nDCG
 - Generation: faithfulness, citation accuracy

@@ -4,7 +4,7 @@ Updated at the end of every phase. A new session reads this first.
 
 ## Current state
 
-Phases 0, 1 and 2 complete. Phase 0: config default is `gemini-3.8-flash`; `--live` unconfirmed after a 503. Phase 1: seven PDFs on disk, hashes pinned. Phase 2: seven chunk files in `data/processed/` (see Phase 2). **Open decision for Mohammad:** three amendments are stamped Withdrawn but the manifest says `in_force` (see Phase 2). Phase 4 complete (pgvector index and naive CLI search, see Phase 4). Phase 3 in progress: ground truth and 18 policies written, overlap check passes. **Not yet done:** parsing the policies through the chunking pipeline (Phase 3 exit criterion). Four more open decisions are listed under Phase 3.
+Phases 0, 1 and 2 complete. Phase 0: config default is `gemini-3.8-flash`; `--live` unconfirmed after a 503. Phase 1: seven PDFs on disk, hashes pinned (an eighth, `md-kyc-2016-v2018`, was added in Phase 6). Phase 2: chunk files in `data/processed/` (see Phase 2). The Phase 2 Withdrawn-stamp discrepancy is resolved (the three KYC amendments are `repealed`, Phase 6). Phase 4 complete (pgvector index and naive CLI search, see Phase 4). Phase 3 in progress: ground truth and 18 policies written, overlap check passes. **Not yet done:** parsing the policies through the chunking pipeline (Phase 3 exit criterion). Open decisions are listed under Phase 3. Phase 5 built, not verified (Gemini 503). **Phase 6 complete:** 100-item gold set, validator passes 12/12 (see Phase 6); its end-of-phase decisions are resolved.
 
 ## Phase 0 — Repo and environment
 
@@ -102,7 +102,7 @@ Page-break continuation merges: PPI 3, KYC 16, DPSC 4, amd-kyc-2024-11 0, amd-ky
 
 **Watermark (stripped at the parsing stage, reported, not silent)**: the red "Withdrawn" stamp is extracted as plain text, merged into body paragraphs (sometimes mid-sentence, sometimes glued to a word with no space, sometimes as its own item). It is removed in memory with a case-sensitive pattern (`\s*Withdrawn(?![a-z])`); the on-disk cache keeps the raw parse. Hits equal pages hit in every document (one stamp per page): KYC 98 hits on 98 of 107 pages, DPSC 19 on 19 of 22, amd-kyc-2024-11 3 on 3, amd-kyc-2025-06 2 on 3, amd-kyc-2025-08 2 on 2, PPI 0, amd-ppi-2024-02 0. I read the context of every DPSC and amendment hit and a filtered sample of the KYC hits; no false positives. Lowercase "withdrawn" in prose (e.g. PPI 5.5) is untouched.
 
-**Manifest discrepancy (needs your decision; manifest NOT changed)**: `amd-kyc-2024-11`, `amd-kyc-2025-06` and `amd-kyc-2025-08` are `status: in_force` in the manifest but their PDFs carry the Withdrawn stamp. Everything else agrees (PPI and amd-ppi in force and unstamped; KYC and DPSC repealed and stamped). `status` and `effective_to` drive Phase 10's as-of-date filtering, so this needs resolving before then.
+**Manifest discrepancy (resolved in Phase 6: the three amendments are now `status: repealed`)**: `amd-kyc-2024-11`, `amd-kyc-2025-06` and `amd-kyc-2025-08` are `status: in_force` in the manifest but their PDFs carry the Withdrawn stamp. Everything else agrees (PPI and amd-ppi in force and unstamped; KYC and DPSC repealed and stamped). `status` and `effective_to` drive Phase 10's as-of-date filtering, so this needs resolving before then.
 
 **Decisions**
 - New dependency `docling`: PDF parsing with layout and table models.
@@ -187,8 +187,8 @@ Nothing untracked needs flagging: `data/processed/` and `data/raw/` are gitignor
 - No new dependency: the overlap check uses the standard library plus pyyaml.
 
 **Open decisions for Mohammad**
-1. `assessment_as_of: 2026-10-01` and the KYC assumption. The manifest marks md-kyc-2016 repealed, and its successors are not in the corpus. The ground truth treats it, as amended to 2025-08-14, as the operative KYC text, citing md-ppi-2021 para 6.1. Phase 10's as-of filter will drop every KYC chunk while the manifest says `repealed`.
-2. md-dpsc-2021 repeal date: manifest `effective_to: 2025-11-28`; README and `docs/phase1_corpus.md` say 2026-07-31. Doesn't affect Phase 3 (both precede the as-of date); matters for Phase 10.
+1. **Resolved in Phase 6:** KYC obligations are assessed as of 2025-10-01 (row-level `as_of`); md-kyc-2016 is repealed 2025-11-28. Original note: `assessment_as_of: 2026-10-01` and the KYC assumption. The manifest marks md-kyc-2016 repealed, and its successors are not in the corpus. The ground truth treats it, as amended to 2025-08-14, as the operative KYC text, citing md-ppi-2021 para 6.1. Phase 10's as-of filter will drop every KYC chunk while the manifest says `repealed`.
+2. ~~md-dpsc-2021 repeal date~~ **Resolved in Phase 6:** `effective_to` is 2026-07-31 (2025-11-28 is the KYC replacement date and had been applied to the wrong document).
 3. Chunker mislabels (Phase 2 fix, now worked around in the ground truth):
    - md-kyc-2016 paragraphs 38(c), (d) and (e) come out as `38(b)(ii)(…)`;
    - Annex chunks reuse paragraph numbers (`11` matches 18 chunks, `8` 3, `12` 2);
@@ -326,3 +326,91 @@ Expected: `data/output/amd-ppi-2024-02_register.json` and a table with a clause 
 8. `update progress for phase 5`: `docs/PROGRESS.md`
 
 Nothing untracked to flag except `.env.example` (carried over from Phase 4).
+
+## Phase 6 — Gold set (complete)
+
+**Built**
+- `data/eval/gold_set.yaml`: 100 retrieval items. **LLM-drafted and human-reviewed**: Claude read each gold chunk and drafted the query and labels; Mohammad reviewed and revised. Not independently hand-labelled. Fields: `item_id`, `source`, `corpus`, `category`, `query`, `gold_chunk_ids`, `gold_clause_paths`, `as_of` (regulation items only); optional `stale_chunk_ids`, `note`. The file header defines each field, category and date.
+- `scripts/validate_gold_set.py`: checks the gold set against Postgres and `gap_ground_truth.yaml`, 12 checks: every item has a gold chunk; every gold id exists; every gold clause path matches the stored `clause_path`; no duplicate `(query, as_of)`; unique item ids; corpus matches; every stale id exists; regulation items have `as_of` and internal items do not; every gold chunk is in force on `as_of`; no stale chunk is in force on `as_of`; obligation items use their obligation's date; every regulation document's status agrees with its `effective_to` on today's date. Exit 1 on any failure.
+- `docs/EVALUATION.md`: recall and MRR definitions, the document-date conventions and the in-force rule, so Phase 7 and Phase 10 implement them rather than re-deciding.
+- Corpus: `md-kyc-2016-v2018` (KYC Master Direction as updated 2018-07-12) added to the manifest, hash pinned, chunked and indexed. Manifest dates revised (see Decisions).
+- `gap_ground_truth.yaml`: the 11 md-kyc-2016 obligations carry `as_of: "2025-10-01"`; the meta assumption now says KYC is repealed 2025-11-28.
+
+**Files added**: `data/eval/gold_set.yaml`, `scripts/validate_gold_set.py`, `docs/EVALUATION.md`
+**Files changed**: `data/corpus_manifest.yaml`, `data/internal/gap_ground_truth.yaml`, `data/internal/KST-CX-001.md`, `README.md`, `docs/PROJECT_BRIEF.md`, `docs/PHASE_PLAN.md`, `docs/phase1_corpus.md`, `docs/PROGRESS.md`
+**Generated, not committed**: `data/processed/md-kyc-2016-v2018.jsonl`, the other seven `.jsonl` files (regenerated with the new manifest dates; chunk counts and ids unchanged), `_build_report.json`, Docling cache; Postgres reloaded.
+
+**Gold set composition (measured by the validator)**
+
+| category | items |
+|---|---|
+| straightforward | 30 |
+| paraphrased | 23 |
+| version_sensitive | 23 |
+| repealed_document | 24 |
+| **total** | **100** (regulation 74, internal 26) |
+
+By source: 57 from the 31 ground-truth obligations (31 regulation queries, plus 26 internal queries for the non-GAP rows; GAP rows have no control to retrieve), 13 amendment-chain, 18 DPSC, 4 KYC-repeal, 8 KYC version pairs. 12 items have two gold chunks; 110 distinct chunks referenced.
+
+**Query wording (measured, scratch script, not committed)**: the median share of a query's content words that appear in its gold text is 0.30 (paraphrased 0.22, straightforward 0.32, version_sensitive 0.36, repealed_document 0.25). No query shares more than 3 consecutive words with its gold text. Measured before the G-054 gold cut.
+
+**md-kyc-2016-v2018 chunking (measured, `build_chunks.py`)**: 63 pages, 141 chunks, 6 null `clause_path` (4%), 21 unplaced numbers, 30 same-page merges. Worse than the current KYC file. Paragraphs 15 and 18-23 come out null or merged into neighbours (`v2018:0047` holds 17 plus deleted 18-22 and small accounts 23). Its paragraph numbers differ from the current text from 52 on (FATF is 55, CKYCR 57). **Checked against the PDF** (pages rendered with pypdfium2 and read, plus pdfium's own text layer, independent of Docling): page 31 prints "55. Jurisdictions that do not or insufficiently apply the FATF Recommendations", its own Explanation cites "Section 55 a & b", and 54 is "Freezing of Assets under Section 51A". The difference is genuine renumbering between versions, not a parser shift. Pages 18 (17), 25 (38) and 26 (40) match the other three v2018 gold labels. No gold clause path was wrong. No Withdrawn stamp; the watermark census reports "DISAGREES" for it because the check assumes anything not `in_force` is stamped, which does not hold for a historical consolidated version.
+
+**Index (measured, `build_index.py`)**: regulation 709 chunks / 8 documents, internal 125 / 18.
+
+**Policy overlap re-check (measured, `check_policy_overlap.py`)**: adding the v2018 text raised one flagged run, "if the customer is not", in KST-CX-001 4.4 (generic wording that matches a 2018 sentence). Reworded, as Phase 3 did for every flagged run. Now 0 flagged runs, medians unchanged (plain 0.30, IDF 0.25), exit 0.
+
+**Decisions**
+- Recall@k = fraction of an item's gold chunks found in the top k. MRR = 1 / rank of the first gold chunk (0 if none in top k). Both averaged over items with equal weight. In `docs/EVALUATION.md`.
+- Gold rule: a chunk is gold if its text answers the query. Amendment circulars repeat inserted text verbatim, so amended-KYC items list both the Master Direction chunk and the amendment chunk.
+- Date conventions (in `docs/EVALUATION.md`): `issue_date` is the instrument's original date; `effective_from`/`effective_to` are the validity window of this text. `md-kyc-2016` `effective_from` 2016-02-25 → 2025-08-14 (its `amended_up_to`), `effective_to` null → 2025-11-28 (repeal; status stays `repealed`). `md-dpsc-2021` `effective_to` 2025-11-28 → 2026-07-31. Amendments: `effective_from` = `issue_date`, `effective_to` = the parent's `effective_to`; the three KYC amendments end 2025-11-28, `amd-ppi-2024-02` is open. In force on a date: `effective_from <= as_of < effective_to`, null end open.
+- `as_of` dates: 2019-01-01 (v2018 in force), 2024-06-01 (DPSC in force), 2025-10-01 (md-kyc-2016 as amended to 2025-08-14 in force: after the last amendment, before the repeal), 2026-10-01 (assessment date). The 10 amended-KYC items use 2025-10-01, not 2025-06-01: seven ask about text inserted on 2025-06-12 or 2025-08-14.
+- Every regulation item has an `as_of`; obligation items take their obligation's date from `gap_ground_truth.yaml`. 31 items were dated in the last pass: 19 PPI items at 2026-10-01 (18 obligation items and G-069), and 12 at 2025-10-01 (the 9 KYC obligation items and G-058, G-061, G-070). Internal items have none: the policy corpus is not versioned. The validator enforces that both files agree.
+- Version pairs: 4 KYC paragraphs (38 periodic updation, 40 first transaction for non-face-to-face accounts, 17 OTP e-KYC account limit, 54/55 FATF jurisdictions), each asked with identical wording at 2019-01-01 and 2025-10-01. Each item's `stale_chunk_ids` is the other version. Duplicates are checked on `(query, as_of)`.
+- KYC-repeal items (as_of 2026-10-01) use questions an in-force PPI clause answers, with md-kyc-2016 chunks as stale. A pure KYC question on that date has no correct chunk in the corpus; that needs an abstention item type, deferred to Phase 13.
+- G-054 gold cut to `KST-SEC-012:0003` (contact register) alone, by Mohammad's decision.
+- G-064 gold `amd-kyc-2024-11:0005` kept: it is the amended text of 56(h) (end) and 56(j) (full), not boilerplate. Its `clause_path` is null.
+- No new dependency.
+
+**Decisions taken at the end of the phase (were open, now resolved by Mohammad)**
+1. **Internal policies are assessed in their current version.** Found: with KYC obligations assessed on 2025-10-01, OBL-12 (COVERED) and OBL-27 (GAP, near miss) name KST-AML-009, effective 2026-01-10, and OBL-15 (COVERED) names KST-DAT-002, effective 2026-04-01 (measured by comparing each policy's header `effective_from` with its obligation's date; the other 28 rows were fine). Resolved by rule, not by backdating: the assessment asks whether the company is compliant now with the rule that applied at the stated date, so regulation is versioned and controls are not. Recorded in `gap_ground_truth.yaml` meta and `docs/EVALUATION.md`. No policy file changed.
+2. **The three KYC amendments are `status: repealed`.** Their `effective_to` (2025-11-28) is past, so `in_force` contradicted it. This also closes the Phase 2 Withdrawn-stamp discrepancy: the watermark census now reports `ok` for all three (measured, `build_chunks.py`). The only remaining "DISAGREES" is `md-kyc-2016-v2018`, expected because a historical consolidated version carries no stamp. New invariant, checked by `validate_gold_set.py` for every regulation document in Postgres: on today's date, `in_force` exactly when `effective_to` is null or in the future. Run before re-indexing, it failed on exactly the three amendments; after, it passes.
+3. **`docs/phase1_corpus.md`** now has the v2018 entry (section 2a) and a note listing the Phase 6 date and status changes, with the manifest named as the authority. README notes the KST-CX-001 §4.4 rewording.
+
+**Document dates now (measured, Postgres)**
+
+| doc_id | status | issue_date | effective_from | effective_to |
+|---|---|---|---|---|
+| md-kyc-2016-v2018 | superseded | 2016-02-25 | 2018-07-12 | 2019-05-29 |
+| md-dpsc-2021 | repealed | 2021-02-18 | 2021-08-18 | 2026-07-31 |
+| md-ppi-2021 | in_force | 2021-08-27 | 2021-08-27 | null |
+| amd-ppi-2024-02 | in_force | 2024-02-23 | 2024-02-23 | null |
+| amd-kyc-2024-11 | repealed | 2024-11-06 | 2024-11-06 | 2025-11-28 |
+| amd-kyc-2025-06 | repealed | 2025-06-12 | 2025-06-12 | 2025-11-28 |
+| amd-kyc-2025-08 | repealed | 2025-08-14 | 2025-08-14 | 2025-11-28 |
+| md-kyc-2016 | repealed | 2016-02-25 | 2025-08-14 | 2025-11-28 |
+
+In force under the window rule: 2019-01-01 md-kyc-2016-v2018 only; 2024-06-01 md-ppi-2021, amd-ppi-2024-02, md-dpsc-2021 (no KYC version in the corpus covers that date); 2025-10-01 all except v2018; 2026-10-01 md-ppi-2021 and amd-ppi-2024-02.
+
+**Verify**
+```
+.\.venv\Scripts\python.exe scripts\validate_gold_set.py
+```
+Expected: 12 `[PASS]` lines, `100 items, 110 distinct chunks referenced, 110 found in Postgres`, `all checks passed`, exit 0. Requires `docker compose up -d` and a current index (`build_index.py`). Two negative tests against deliberately broken copies failed on exactly the planted faults with exit 1. The first planted a missing id, a wrong path, a duplicate query, an empty gold list and a wrong corpus. The second moved a 2019 item to 2025 and a KYC item to 2026, gave an internal item a date, and removed a regulation item's date.
+
+Also: `.\.venv\Scripts\python.exe scripts\check_policy_overlap.py` → `0 flagged run(s) across 18 policies`, exit 0.
+
+**Suggested commit breakdown**
+1. `fix repeal and validity dates for kyc and dpsc master directions`: `data/corpus_manifest.yaml` (md-kyc-2016 and md-dpsc-2021 date lines; `git add -p`)
+2. `date and repeal the kyc amendment circulars`: `data/corpus_manifest.yaml` (the four `amd-*` date lines and the three `status: repealed` lines; `git add -p`)
+3. `add 2018 kyc master direction to corpus manifest`: `data/corpus_manifest.yaml` (the new entry)
+4. `assess kyc obligations as of their operative date`: `data/internal/gap_ground_truth.yaml`
+5. `reword grievance policy phrase shared with 2018 kyc text`: `data/internal/KST-CX-001.md`
+6. `add retrieval gold set`: `data/eval/gold_set.yaml`
+7. `add gold set validator with date and status checks`: `scripts/validate_gold_set.py`
+8. `document retrieval scoring and document date rules`: `docs/EVALUATION.md`
+9. `add 2018 kyc version to corpus record`: `docs/phase1_corpus.md`
+10. `describe gold set and policy rewording in docs`: `README.md`, `docs/PROJECT_BRIEF.md`, `docs/PHASE_PLAN.md`
+11. `update progress for phase 6`: `docs/PROGRESS.md`
+
+Flags: `.gitignore` (modified) and `.env.example` (untracked) predate this phase. `data/raw/md-kyc-2016-v2018.pdf` and `data/processed/` are gitignored; do not commit them.
