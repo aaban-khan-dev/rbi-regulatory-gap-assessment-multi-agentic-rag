@@ -6,6 +6,8 @@ Updated at the end of every phase. A new session reads this first.
 
 Phases 0, 1 and 2 complete. Phase 0: config default is `gemini-3.8-flash`; `--live` unconfirmed after a 503. Phase 1: seven PDFs on disk, hashes pinned (an eighth, `md-kyc-2016-v2018`, was added in Phase 6). Phase 2: chunk files in `data/processed/` (see Phase 2). The Phase 2 Withdrawn-stamp discrepancy is resolved (the three KYC amendments are `repealed`, Phase 6). Phase 4 complete (pgvector index and naive CLI search, see Phase 4). Phase 3 in progress: ground truth and 18 policies written, overlap check passes. **Not yet done:** parsing the policies through the chunking pipeline (Phase 3 exit criterion). Open decisions are listed under Phase 3. Phase 5 built, not verified (Gemini 503). **Phase 6 complete:** 100-item gold set, validator passes 12/12 (see Phase 6); its end-of-phase decisions are resolved. **Phase 7 complete:** retrieval-only eval harness; naive baseline recorded, then re-recorded after two gold widenings. **Current baseline: recall@10 0.700** (new gold, plain chunk text). Parent-heading context was built, measured to cost 3 points, and is off by default (see "Phase 7 follow-up").
 
+**Phase 8 complete:** hybrid retrieval (BM25 + vector, RRF) is `--variant hybrid`. Measured against the naive baseline it is roughly flat on recall@10 (0.700 to 0.705) and worse on MRR, nDCG@10 and stale rate (see Phase 8). It is ablation row 2.
+
 ## Phase 0 — Repo and environment
 
 **Built**
@@ -546,3 +548,134 @@ Expected: 253 of 709 context lines, 12 passes, recall@10 0.700 for the new `naiv
 Note: `regassess/config.py` also carries the earlier `query_prefix` change if that was not committed yet; check `git diff` so commit 3 does not swallow it.
 
 Flags: `data/processed/` is gitignored; do not commit it. `.gitignore` (modified) and `.env.example` (untracked) predate this work.
+
+## Phase 8 — Hybrid retrieval (complete)
+
+BM25 keyword search fused with the vector search by Reciprocal Rank Fusion. Retrieval only; no LLM calls.
+
+**Built**
+- `regassess/retrieval.py`: `tokenize`, `keyword_search` (BM25, one in-memory index per corpus, built from Postgres on first use), `rrf_fuse`, `hybrid_search`, `hybrid_config`. `search()` is unchanged.
+- `regassess/variants.py`: `hybrid` variant registered in `VARIANTS`; new `VARIANT_CONFIG` mapping.
+- `regassess/config.py`: `rrf_k = 60`, `rrf_candidates = 50`.
+- Harness change, as approved: `run_eval.py` writes `variant_config` into every run file and prints it; `compare_runs.py` warns when runs of one variant differ in it. The variant mechanism itself needed no rework. Old run files have no `variant_config` and compare as `{}`.
+
+**Files added**: `data/eval/runs/hybrid_20261015-164934.json`
+**Files changed**: `regassess/retrieval.py`, `regassess/variants.py`, `regassess/config.py`, `scripts/run_eval.py`, `scripts/compare_runs.py`, `requirements.txt`, `docs/EVALUATION.md`, `docs/PROGRESS.md`
+
+**Tokenizer finding (checked before measuring, as requested)**: with a plain lowercase `[a-z0-9]+` split, `Rs.2,00,000/-` (md-ppi-2021:0052) became `rs 2 00 000` and `₹10,000/-` (md-ppi-2021:0127) became `10 000`. Shredded, so BM25 could not match an exact amount. Fix: a comma-joined digit group is one token (`2,00,000`, `10,000`). Nothing else was changed; no stemming, no stopword list. After the fix a query for "Rs.2,00,000" ranks md-ppi-2021:0046, 0052, 0054 first under BM25. The rupee sign and the `Rs` prefix are separate tokens or dropped, so `Rs.10,000` and `₹10,000` both match on `10,000`. **Limit on what this can show:** only 1 of the 100 gold queries contains a figure (G-066, "Rs 50,000"); 13 others contain a year. The gold set barely exercises exact-amount matching, so the fix is correct but its effect is mostly unmeasured here. G-066 got worse (0.5 to 0.0).
+
+**Checks (run before the eval)**: the BM25 query tokens for a sample query contain none of "represent", "searching", "relevant", "passages" (prefix is added only inside `embed_query`, so it cannot reach BM25). BM25 document lengths equal the token count of `passage_text()` for all 709 regulation chunks (`PARENT_CONTEXT` off, so plain `text`); internal index 125 chunks.
+
+**Measured (`run_eval.py --variant hybrid --k 10`, depth 50, same gold hash as the naive baseline)**
+
+| | naive recall@10 | hybrid | naive MRR | hybrid | naive nDCG@10 | hybrid | naive stale | hybrid |
+|---|---|---|---|---|---|---|---|---|
+| OVERALL | 0.700 | 0.705 | 0.482 | 0.423 | 0.523 | 0.486 | 0.545 | 0.591 |
+| straightforward (30) | 0.817 | 0.733 | 0.594 | 0.482 | 0.644 | 0.547 | n/a | n/a |
+| paraphrased (23) | 0.696 | 0.783 | 0.425 | 0.398 | 0.489 | 0.486 | n/a | n/a |
+| version_sensitive (23) | 0.739 | 0.739 | 0.530 | 0.486 | 0.538 | 0.531 | 0.750 | 0.750 |
+| repealed_document (24) | 0.521 | 0.562 | 0.350 | 0.312 | 0.388 | 0.368 | 0.429 | 0.500 |
+
+Zero-recall items: 25 naive, 27 hybrid. Per item, recall@10: 12 up, 10 down, 78 unchanged. Up: G-020, 028, 030, 038, 043, 055, 060, 062, 075, 089, 091, 093. Down: G-003, 016, 054, 056, 066, 069, 073, 083, 086, 094.
+
+**Reading the result (observation, not a tested cause).** Hybrid lifts the paraphrased category's recall (0.696 to 0.783) and hurts straightforward (0.817 to 0.733). For the 10 dropped items the vector retriever alone had the gold chunk at rank 1 to 9 (scratch diagnosis, not committed); BM25 had it outside its top 50 in 9 of the 10 (G-056 at 39), and RRF then pushed it to fused rank 11 to 30. A chunk with a moderate rank in both lists outscores a chunk that is first in only one. The gold queries are written to share few words with their gold text (median content-word overlap 0.30, Phase 6), which is the case where BM25 is weakest. Whether stopword removal or a different fusion weighting would change this is **untested** and I did not try it: k, the BM25 parameters and the tokenizer are fixed so the row is not fitted to the gold set. `stale_rate` did not improve and rose slightly, as expected: hybrid has no date logic.
+
+**Decisions**
+- New dependency `rank_bm25`: the BM25 implementation, so the ablation row honestly says BM25.
+- One BM25 index per corpus, in memory, built from Postgres at first use in each process. After re-indexing, a new process rebuilds it.
+- BM25 indexes `passage_text()` (the embedding input) so both retrievers see the same text.
+- Zero-score chunks are left out of the BM25 list; ties broken by `chunk_id` in BM25 and in the fusion. Naive's tie-breaking left alone, as agreed.
+- `rrf_k = 60`, BM25 k1/b/epsilon at library defaults, candidate pool 50: all fixed, none tuned.
+- **Open for you:** the hybrid row does not beat naive on the headline metrics. The README's ablation story ("every step helps") is not what this phase measured; row 2 should be reported as measured. Whether to investigate before Phase 9 (e.g. a stopword run as a separate, labelled variant) is your call.
+
+**Verify**
+```
+docker compose up -d
+.\.venv\Scripts\python.exe scripts\run_eval.py --variant hybrid --k 10
+.\.venv\Scripts\python.exe scripts\compare_runs.py data\eval\runs\naive_20261015-163317.json data\eval\runs\hybrid_20261015-164934.json
+```
+Expected: the table above (hybrid is deterministic given a fixed index; I ran it once, so an exact repeat is unconfirmed). No warnings from `compare_runs.py` (same gold hash, `k`, model, prefix, flag).
+
+**Suggested commit breakdown**
+1. `add rank-bm25 dependency`: `requirements.txt`
+2. `add rrf settings to config`: `regassess/config.py`
+3. `add bm25 keyword search and rrf fusion`: `regassess/retrieval.py`
+4. `register hybrid variant with recorded config`: `regassess/variants.py`
+5. `record variant config in eval runs`: `scripts/run_eval.py`, `scripts/compare_runs.py`
+6. `document hybrid retrieval settings`: `docs/EVALUATION.md`
+7. `add hybrid eval run`: `data/eval/runs/hybrid_20261015-164934.json`
+8. `update progress for phase 8`: `docs/PROGRESS.md`
+
+Flags: `data/eval/runs/hybrid_20261015-164934.json` is untracked and not gitignored; it is the ablation row 2 file, so commit it on purpose. Nothing else untracked.
+
+## Phase 8 follow-up — recall@50, bm25_only, hybrid_nostop
+
+Three things asked for after the first hybrid result. No row was dropped or re-run; all four rows below come from one gold hash (`bb67802ee062`), one set of settings, one run each.
+
+**Built**
+- `regassess/stopwords.py`: the NLTK English stopword list, embedded (no dependency, no download). Checked equal to the current `nltk.corpus.stopwords.words('english')` (198 words) with NLTK installed in a scratch directory only; NLTK is not in the venv or `requirements.txt`. My first typed version had 179 words, a strict subset (the 19 missing were apostrophe contractions that cannot occur as tokens); completed for exactness. Not scikit-learn's list: it also removes `must`, `may`, `should`, `not`, `no`, `within`, `per`.
+- `regassess/retrieval.py`: `tokenize`, `_bm25_index`, `keyword_search`, `hybrid_search` take `drop_stopwords` (default False, so `hybrid` behaves exactly as before); new `bm25_config`; the stopword flag is part of the BM25 index cache key.
+- `regassess/variants.py`: `bm25_only`, `hybrid_nostop` in `VARIANTS` and `VARIANT_CONFIG`.
+- `scripts/compare_runs.py`: optional `--k` to score runs at a larger cutoff than they were run at (additive; default output unchanged).
+
+**Files added**: `regassess/stopwords.py`, `data/eval/runs/bm25_only_20261015-165609.json`, `data/eval/runs/hybrid_nostop_20261015-165658.json`
+**Files changed**: `regassess/retrieval.py`, `regassess/variants.py`, `scripts/compare_runs.py`, `docs/EVALUATION.md`, `docs/PROGRESS.md`
+
+**1. Depth-50 metrics for the existing runs (computed from saved rankings, no re-run)**: recall@50 naive 0.935, hybrid 0.910; nDCG@50 naive 0.575, hybrid 0.532. Hybrid has the gold chunks *less* often in its top 50 than naive. By the stated criterion that is the "not finding them" case, not "found but ranked badly". One caveat: the fused list is cut to 50, so it cannot beat the vector pool by construction. The union of the vector top-50 and the BM25 top-50 (up to 100 chunks, computed from the naive and bm25_only runs with a scratch script, not committed) reaches recall 0.975 against 0.935 for the vector top-50 alone. BM25 adds a gold chunk the vector search missed in 5 items (G-012, G-022, G-029, G-031, G-065). So BM25 does surface a few extra chunks; fusing to a pool of 50 loses more than it gains.
+
+**All four rows, k=10 (`compare_runs.py`)**
+
+| | naive | hybrid | bm25_only | hybrid_nostop |
+|---|---|---|---|---|
+| **OVERALL** recall@10 | 0.700 | 0.705 | 0.490 | 0.665 |
+| MRR | 0.482 | 0.423 | 0.254 | 0.436 |
+| nDCG@10 | 0.523 | 0.486 | 0.306 | 0.482 |
+| stale_rate (22) | 0.545 | 0.591 | 0.455 | 0.545 |
+| **straightforward** (30) recall / MRR / nDCG | 0.817 / 0.594 / 0.644 | 0.733 / 0.482 / 0.547 | 0.517 / 0.245 / 0.309 | 0.750 / 0.552 / 0.595 |
+| **paraphrased** (23) | 0.696 / 0.425 / 0.489 | 0.783 / 0.398 / 0.486 | 0.348 / 0.127 / 0.179 | 0.652 / 0.363 / 0.431 |
+| **version_sensitive** (23) recall / MRR / nDCG / stale (8) | 0.739 / 0.530 / 0.538 / 0.750 | 0.739 / 0.486 / 0.531 / 0.750 | 0.609 / 0.399 / 0.434 / 0.625 | 0.674 / 0.497 / 0.510 / 0.625 |
+| **repealed_document** (24) recall / MRR / nDCG / stale (14) | 0.521 / 0.350 / 0.388 / 0.429 | 0.562 / 0.312 / 0.368 / 0.500 | 0.479 / 0.248 / 0.301 / 0.357 | 0.562 / 0.302 / 0.361 / 0.500 |
+
+**All four rows, k=50 (`compare_runs.py --k 50`)**: recall@50 / nDCG@50
+
+| | naive | hybrid | bm25_only | hybrid_nostop |
+|---|---|---|---|---|
+| OVERALL | 0.935 / 0.575 | 0.910 / 0.532 | 0.785 / 0.373 | 0.915 / 0.540 |
+| straightforward | 0.967 / 0.678 | 0.967 / 0.599 | 0.833 / 0.380 | 0.933 / 0.638 |
+| paraphrased | 0.913 / 0.535 | 0.913 / 0.513 | 0.870 / 0.298 | 0.957 / 0.496 |
+| version_sensitive | 0.957 / 0.592 | 0.891 / 0.568 | 0.826 / 0.487 | 0.913 / 0.571 |
+| repealed_document | 0.896 / 0.470 | 0.854 / 0.433 | 0.604 / 0.327 | 0.854 / 0.432 |
+
+stale_rate at k=50 is 0.864 / 0.818 / 0.636 / 0.818 (naive / hybrid / bm25_only / hybrid_nostop): at depth 50 almost every stale chunk is present in every configuration. bm25_only's lower stale rate comes from retrieving less, not from avoiding stale text.
+
+**Reading it (observations; mechanisms not tested)**
+- BM25 alone has signal but is weak: recall@10 0.490, 47 of 100 items at zero, paraphrased worst (0.348). At k=50 it reaches 0.785.
+- Fusion is where hybrid's one gain comes from: paraphrased recall@10 0.696 to 0.783 (bm25_only 0.348). Everywhere else hybrid is flat or worse than naive on the rank-sensitive metrics (MRR, nDCG).
+- Stopword removal did not rescue hybrid: recall@10 0.705 to 0.665, MRR 0.423 to 0.436, nDCG@10 0.486 to 0.482, stale_rate 0.591 to 0.545. Mixed, no clear gain. On a 100-item set a few items' movement explains differences this small, so I would not read the sign as established. I did not look at per-item changes for this row.
+- No tuning followed from any of this. `rrf_k`, BM25 parameters and the candidate pool are as before.
+
+**Decisions**
+- Stopword list: NLTK's, embedded and verified, not scikit-learn's (it removes normative words) and not a new dependency.
+- Keep all four rows in the ablation table, losers included.
+- No new dependency.
+- **Open for you:** (a) hybrid as input to Phase 9's reranker: fusing to a pool of 50 lowers recall@50 (0.935 to 0.910), but a union pool of the two lists raises it to 0.975. A reranker over the union (up to 100 candidates) is a different configuration from the `hybrid` row and has not been run. (b) Whether `hybrid` or `naive` is the retrieval input to Phase 9.
+
+**Verify**
+```
+.\.venv\Scripts\python.exe scripts\run_eval.py --variant bm25_only --k 10
+.\.venv\Scripts\python.exe scripts\run_eval.py --variant hybrid_nostop --k 10
+.\.venv\Scripts\python.exe scripts\compare_runs.py data\eval\runs\naive_20261015-163317.json data\eval\runs\hybrid_20261015-164934.json data\eval\runs\bm25_only_20261015-165609.json data\eval\runs\hybrid_nostop_20261015-165658.json
+.\.venv\Scripts\python.exe scripts\compare_runs.py --k 50 <same four files>
+```
+Expected: the tables above, no warnings. Each variant was run once; exact repeats are unconfirmed.
+
+**Suggested commit breakdown** (continues the Phase 8 list)
+1. `add nltk english stopword list`: `regassess/stopwords.py`
+2. `add stopword option to bm25 tokenizer and search`: `regassess/retrieval.py` (this file also carries the uncommitted Phase 8 hybrid code; commit that first or use `git add -p`)
+3. `register bm25_only and hybrid_nostop variants`: `regassess/variants.py` (same caveat)
+4. `add k override to run comparison`: `scripts/compare_runs.py` (same caveat for the earlier variant_config edit)
+5. `document keyword-only and stopword variants`: `docs/EVALUATION.md`
+6. `add bm25_only and hybrid_nostop eval runs`: `data/eval/runs/bm25_only_20261015-165609.json`, `data/eval/runs/hybrid_nostop_20261015-165658.json`
+7. `update progress for phase 8 follow-up`: `docs/PROGRESS.md`
+
+Flags: both new run files are untracked and not gitignored; commit them on purpose. Nothing else untracked.

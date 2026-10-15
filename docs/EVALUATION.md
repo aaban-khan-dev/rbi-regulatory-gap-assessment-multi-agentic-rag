@@ -87,6 +87,42 @@ unchanged. A table unit is never chosen as a parent. Internal policy chunks have
 context. Run files record the flag; changing it needs `build_index.py` and a new
 baseline.
 
+**Hybrid retrieval (`--variant hybrid`, Phase 8).** Vector search and BM25 over the
+item's corpus, fused by Reciprocal Rank Fusion: `score = sum over lists of 1/(k + rank)`,
+rank from 1, ties broken by `chunk_id`. Settings that change the numbers are written
+to each run file as `variant_config`, and `compare_runs.py` warns when two runs of one
+variant differ in it:
+
+- `rrf_k` = 60 (literature default, **not tuned** on the gold set; `RRF_K` in `.env`);
+- `rrf_candidates` = 50: each list is cut to 50 before fusing, independent of `--depth`;
+- BM25: `rank_bm25.BM25Okapi`, k1 = 1.5, b = 0.75, epsilon = 0.25 (library defaults, passed
+  explicitly, **not tuned**), one in-memory index per corpus built from Postgres at first
+  use;
+- tokenizer: lowercase; a comma-joined digit group (`2,00,000`, `10,000`) is one token,
+  everything else a `[a-z0-9]+` run. No stemming, no stopwords. The digit rule exists
+  because the plain split turned `Rs.2,00,000` into `rs 2 00 000`, which cannot match an
+  exact amount. It is the only tokenizer rule beyond the plain split.
+
+BM25 indexes `embeddings.passage_text()`, the function `build_index.py` embeds, so both
+retrievers see the same text (plain `text`; `context + text` if `PARENT_CONTEXT` is on).
+The bge query prefix is added inside `embed_query()` and never reaches BM25. Chunks that
+share no token with the query are left out of the BM25 list. Like `naive`, `hybrid`
+ignores `as_of`.
+
+**Two more variants, same BM25 settings.** `bm25_only` is keyword search alone, no
+fusion; chunks sharing no token with the query are excluded, so its rankings can be
+shorter than the depth. `hybrid_nostop` is `hybrid` with the NLTK English stopword list
+(`regassess/stopwords.py`, checked equal to `nltk.corpus.stopwords.words('english')`)
+removed from the BM25 query and documents; the vector side is untouched. It is its own
+row; `hybrid` is unchanged (its recorded `variant_config` is identical to the saved run's).
+The list removes `not`, `no`, `should` and single letters such as the clause markers
+`(a)`, `(i)`, and keeps `must`, `may`, `shall`. Its `tokenizer` string reads "no stemming,
+no stopwords; then NLTK English stopwords removed", which is clumsy wording, not a
+contradiction; it is left as recorded in the run file.
+
+`compare_runs.py --k 50` scores every run at k=50 from the stored depth-50 rankings, with
+no re-run (`--k` may not exceed a run's depth).
+
 **Gold set revisions.** The first run's diagnosis found two incomplete golds. G-061
 gained `amd-kyc-2024-11:0005` and G-079 gained `md-dpsc-2021:0000`; G-012 was
 reviewed and left alone. Both changes were made after the baseline misses were
