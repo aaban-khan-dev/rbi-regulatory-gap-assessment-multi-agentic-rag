@@ -25,11 +25,74 @@ searched over the item's `corpus` only.
 - **MRR** = 1 / rank of the first gold chunk in the ranking, or 0 if none is
   found within `k`. Later gold hits do not count.
 
-Both are averaged over items, each item weighted equally. Reported overall and
-per category.
+- **nDCG@k**: binary relevance (gain 1 for a gold chunk), discounted by
+  log2(rank + 1), divided by the best possible score for that item (all its gold
+  chunks, up to k, at the top).
+- **Stale rate**: 1 if any of the item's `stale_chunk_ids` is in the top `k`,
+  else 0.
+
+All are averaged over items, each item weighted equally. Reported overall and
+per category. **Stale rate averages only over items that have `stale_chunk_ids`**
+(22 of 100: 8 version_sensitive, 14 repealed_document). Averaging over all 100
+would dilute it with items that cannot score a hit. Every report prints the
+count (`n_stale`) next to it.
 
 `as_of` is part of the item. A configuration without version awareness ignores
 it. A version-aware configuration must use it.
+
+## Harness
+
+```
+.\.venv\Scripts\python.exe scripts\run_eval.py --variant naive --k 10
+.\.venv\Scripts\python.exe scripts\compare_runs.py data\eval\runs\<run1>.json data\eval\runs\<run2>.json
+```
+
+No LLM calls. A retrieval configuration is a function registered in
+`regassess/variants.py`; `--variant` selects it. Every variant receives each
+item's `as_of`. The `naive` variant ignores it by design.
+
+**Run files** (`data/eval/runs/<variant>_<timestamp>.json`) record the variant,
+`k`, retrieval `depth`, embedding model, query prefix, SHA-256 of the gold file,
+and each item's gold set, stale set and raw ranking (chunk_id, score). Metrics
+are recomputed from the rankings, so a new metric applies to old runs.
+`compare_runs.py` warns when runs differ in gold hash, `k`, model or prefix.
+
+**Depth.** Rankings are stored to depth 50 (`--depth`), metrics computed at `k`.
+Deeper than `k` so recall at a larger cutoff needs no re-run; not the whole
+corpus (709 regulation chunks), which would be mostly noise.
+
+**Corpus scoping.** Each query is searched in its item's `corpus` only. This
+measures the real path: the production graph has separate regulation-retriever
+and control-retriever nodes, each scoped to one corpus. Searching both corpora
+together would let internal policies crowd out regulation answers, a failure the
+real system cannot have.
+
+**Query prefix.** bge-small-en-v1.5 expects the instruction `Represent this
+sentence for searching relevant passages: ` on queries and nothing on passages.
+`regassess/embeddings.py` already did exactly that before Phase 7, so no A/B run
+was needed. The prefix is now the `query_prefix` setting in `config.py` (override
+with `QUERY_PREFIX` in `.env`) and is stored in every run file. No with/without
+comparison has been measured. Changing it invalidates every recorded run.
+
+**Parent-heading context.** A chunk filed under a nested clause (`9.2(c)`) is a
+tail whose parent heading (`9.2 Full-KYC PPIs`) sits in an earlier chunk.
+`regassess/chunking.py` records that heading in a separate `context` field: the
+nearest parent clause's first line, cut at the first `": "`, capped at 200
+characters, set only when the parent is not already inside the chunk. The
+embedding input is `context + "\n" + text` only when `PARENT_CONTEXT` is on
+(`embeddings.passage_text`); **the default is off**, because it lowered naive
+recall@10 from 0.700 to 0.670 (README, "A negative result"). `text` stays verbatim
+so citations quote the source, and chunk ids, boundaries and `clause_path` are
+unchanged. A table unit is never chosen as a parent. Internal policy chunks have no
+context. Run files record the flag; changing it needs `build_index.py` and a new
+baseline.
+
+**Gold set revisions.** The first run's diagnosis found two incomplete golds. G-061
+gained `amd-kyc-2024-11:0005` and G-079 gained `md-dpsc-2021:0000`; G-012 was
+reviewed and left alone. Both changes were made after the baseline misses were
+seen, which makes later results slightly more lenient. The notes in the gold file
+say so. The gold file hash changed, so the first run was kept as
+`naive_preheadings_*.json` and a new baseline recorded.
 
 ## Document dates
 

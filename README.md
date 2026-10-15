@@ -100,3 +100,42 @@ Scoring rules are in [`docs/EVALUATION.md`](docs/EVALUATION.md).
 ```
 .\.venv\Scripts\python.exe scripts\validate_gold_set.py
 ```
+
+## A negative result: parent-heading prefixes made retrieval worse
+
+Some chunks are the tail of a nested clause (RBI PPI 9.2(c)) and never name their
+topic, because the heading ("9.2 Full-KYC PPIs") is in the previous chunk. The
+obvious fix is to prepend the parent clause's heading before embedding. I built
+it (the `context` field, switched by `PARENT_CONTEXT` in
+[`regassess/config.py`](regassess/config.py)) and measured it on the naive
+baseline against the same gold set: **recall@10 fell from 0.700 to 0.670, three
+points.** MRR was flat (0.482 to 0.481) and nDCG@10 fell from 0.523 to 0.511.
+
+It helped where the parent is a short topical heading: G-004 (full-KYC wallet
+balance limit) moved from rank 27 to 5. It hurt because many parents are long
+lead-in sentences, so every sibling gets the same prefix and they become more
+alike. The clearest case is G-008, whose gold clause 15.3(i) fell from **rank 1 to
+rank 47** once it started with "15.3 PPI issuer shall ensure that the following
+framework is put in place to address the safety and security concerns…", a prefix
+shared with every other 15.3 sub-clause. That reading comes from inspecting the
+chunks, not from a controlled test.
+
+The flag is off by default, and the baseline in the ablation table uses plain chunk
+text. The code and the stored `context` stay in the repository so Phase 10 can
+compare an LLM-written context line against this naive version as an extra
+ablation row. The 0.700 and 0.670 runs are
+`data/eval/runs/naive_20261015-163317.json` and
+`naive_parentctx_20261015-161611.json`.
+
+## The measured problem: retrieval returns text that was no longer in force
+
+Plain top-k vector search has no idea which version of a document applied on the
+date a question is about. Measured on the first naive baseline run
+(`data/eval/runs/naive_preheadings_20261015-154630.json`, before the
+parent-heading change): in the regulation items where the retriever found no
+correct clause in its top 10, **130 of the 240 top-10 slots (54%) held text that
+was out of force on the item's `as_of` date.** Twenty of those 24 items had at
+least one. That is the problem statement for version-aware filtering. "In force"
+follows the window rule in [`docs/EVALUATION.md`](docs/EVALUATION.md). The
+figure was computed from the run file and the manifest dates by a one-off
+script that is not in the repository, so it describes that run only.

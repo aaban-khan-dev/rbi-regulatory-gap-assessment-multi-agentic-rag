@@ -4,7 +4,7 @@ Updated at the end of every phase. A new session reads this first.
 
 ## Current state
 
-Phases 0, 1 and 2 complete. Phase 0: config default is `gemini-3.8-flash`; `--live` unconfirmed after a 503. Phase 1: seven PDFs on disk, hashes pinned (an eighth, `md-kyc-2016-v2018`, was added in Phase 6). Phase 2: chunk files in `data/processed/` (see Phase 2). The Phase 2 Withdrawn-stamp discrepancy is resolved (the three KYC amendments are `repealed`, Phase 6). Phase 4 complete (pgvector index and naive CLI search, see Phase 4). Phase 3 in progress: ground truth and 18 policies written, overlap check passes. **Not yet done:** parsing the policies through the chunking pipeline (Phase 3 exit criterion). Open decisions are listed under Phase 3. Phase 5 built, not verified (Gemini 503). **Phase 6 complete:** 100-item gold set, validator passes 12/12 (see Phase 6); its end-of-phase decisions are resolved.
+Phases 0, 1 and 2 complete. Phase 0: config default is `gemini-3.8-flash`; `--live` unconfirmed after a 503. Phase 1: seven PDFs on disk, hashes pinned (an eighth, `md-kyc-2016-v2018`, was added in Phase 6). Phase 2: chunk files in `data/processed/` (see Phase 2). The Phase 2 Withdrawn-stamp discrepancy is resolved (the three KYC amendments are `repealed`, Phase 6). Phase 4 complete (pgvector index and naive CLI search, see Phase 4). Phase 3 in progress: ground truth and 18 policies written, overlap check passes. **Not yet done:** parsing the policies through the chunking pipeline (Phase 3 exit criterion). Open decisions are listed under Phase 3. Phase 5 built, not verified (Gemini 503). **Phase 6 complete:** 100-item gold set, validator passes 12/12 (see Phase 6); its end-of-phase decisions are resolved. **Phase 7 complete:** retrieval-only eval harness; naive baseline recorded, then re-recorded after two gold widenings. **Current baseline: recall@10 0.700** (new gold, plain chunk text). Parent-heading context was built, measured to cost 3 points, and is off by default (see "Phase 7 follow-up").
 
 ## Phase 0 — Repo and environment
 
@@ -414,3 +414,135 @@ Also: `.\.venv\Scripts\python.exe scripts\check_policy_overlap.py` → `0 flagge
 11. `update progress for phase 6`: `docs/PROGRESS.md`
 
 Flags: `.gitignore` (modified) and `.env.example` (untracked) predate this phase. `data/raw/md-kyc-2016-v2018.pdf` and `data/processed/` are gitignored; do not commit them.
+
+## Phase 7 — Evaluation harness (complete)
+
+Retrieval metrics only. No LLM calls; faithfulness and citation accuracy are deferred.
+
+**Built**
+- `regassess/evaluation.py`: pure metric functions (recall@k, reciprocal rank, nDCG@k with binary relevance, stale hit), equal-weight aggregation, overall and per-category summary. No DB, no models.
+- `regassess/variants.py`: the pluggable retrieval call. A variant is `fn(query, as_of, corpus, depth)`; `VARIANTS` maps `--variant` names to them. `naive` wraps `search()` and ignores `as_of` on purpose. A later phase adds a function and a dict entry; the harness is not touched.
+- `scripts/run_eval.py`: `--variant` (default naive), `--k` (default 10), `--depth` (default 50). Saves `data/eval/runs/<variant>_<timestamp>.json`, prints the overall and per-category table and the 10 worst items.
+- `scripts/compare_runs.py`: side-by-side ablation table from two or more run files, metrics recomputed from the stored rankings, warns when runs differ in gold hash, k, model or prefix.
+- `query_prefix` setting in `config.py`; `embeddings.py` reads it instead of a module constant. Same default string, so behaviour is unchanged.
+- `docs/EVALUATION.md`: nDCG and stale-rate definitions, harness, run-file contents, depth, corpus-scoping rationale, query-prefix record.
+
+**Files added**: `regassess/evaluation.py`, `regassess/variants.py`, `scripts/run_eval.py`, `scripts/compare_runs.py`, `data/eval/runs/naive_preheadings_20261015-154630.json`
+**Files changed**: `regassess/config.py`, `regassess/embeddings.py`, `docs/EVALUATION.md`, `docs/PROGRESS.md`
+
+**Naive baseline (measured, `run_eval.py --variant naive --k 10`, depth 50, bge-small-en-v1.5, query prefix on)**
+
+| | n | recall@10 | MRR | nDCG@10 | stale_rate (n_stale) |
+|---|---|---|---|---|---|
+| OVERALL | 100 | 0.690 | 0.475 | 0.517 | 0.545 (22) |
+| straightforward | 30 | 0.817 | 0.594 | 0.644 | n/a (0) |
+| paraphrased | 23 | 0.696 | 0.425 | 0.489 | n/a (0) |
+| version_sensitive | 23 | 0.717 | 0.524 | 0.529 | 0.750 (8) |
+| repealed_document | 24 | 0.500 | 0.329 | 0.372 | 0.429 (14) |
+
+27 of 100 items have recall@10 = 0. Gold file SHA-256 starts `8c0a5613e2f06f90`.
+
+**Checks**: metric functions asserted against hand-computed cases (partial recall, rank 2 and 3 reciprocal rank, nDCG with one and two gold chunks, stale at the cutoff boundary), all passed in a throwaway script, not committed. `compare_runs.py` was run on the same file twice and reproduced the numbers above. There is no pytest suite until Phase 14.
+
+**Decisions**
+- Each query is searched in its item's own corpus (mirrors the separate regulation and control retriever nodes).
+- Depth 50 stored, metrics at `--k`.
+- Stale rate averages over the 22 items that have a stale set, not all 100; `n_stale` is printed beside it. The 22 are in only two categories, so the overall 0.545 is a mixture of those two.
+- Worst-10 sorts by recall then item_id; with 27 items at zero it is a sample of the failures, not a ranking. Read the full run file for the rest.
+- Query prefix: `embeddings.py` already used the bge instruction on queries only, so no with/without run was done and none is claimed. It is now a config setting stored in each run file.
+- No new dependency.
+
+**Observations (not yet investigated)**
+- Paraphrased and repealed_document are the weakest categories on recall, as the gold set was designed to make them. Whether the zero-recall items are retrieval failures or gold or chunking problems (e.g. G-004, a plain question on maximum balance) has not been checked.
+- `stale_rate` is for items where the stale chunk is on the same topic by construction, so it measures version confusion, not general noise.
+
+**Verify**
+```
+docker compose up -d
+.\.venv\Scripts\python.exe scripts\run_eval.py --variant naive --k 10
+.\.venv\Scripts\python.exe scripts\compare_runs.py data\eval\runs\naive_preheadings_20261015-154630.json
+```
+Expected: the table above (the run is deterministic on CPU, but I have run it once, not twice, so an exact repeat is unconfirmed) and a new run file.
+
+**Suggested commit breakdown**
+1. `add query prefix setting to config`: `regassess/config.py`, `regassess/embeddings.py`
+2. `add retrieval metric functions`: `regassess/evaluation.py`
+3. `add pluggable retrieval variants with naive baseline`: `regassess/variants.py`
+4. `add eval harness that saves raw rankings`: `scripts/run_eval.py`
+5. `add run comparison script for ablation tables`: `scripts/compare_runs.py`
+6. `document harness and retrieval metrics`: `docs/EVALUATION.md`
+7. `add naive baseline run`: `data/eval/runs/naive_preheadings_20261015-154630.json`
+8. `update progress for phase 7`: `docs/PROGRESS.md`
+
+Flags: `data/eval/runs/` is not gitignored. The baseline file is committed on purpose (it is the ablation row); decide whether later scratch runs should be ignored. `.gitignore` (modified) and `.env.example` (untracked) predate this phase.
+
+## Phase 7 follow-up — zero-recall diagnosis, parent-heading context, baseline re-recorded
+
+**Diagnosis** (`scripts/diagnose_zeros.py`, read-only). The 27 zero-recall items split into 18 near misses (gold at rank 11-50), 5 far misses (not in the top 50), 4 chunking cases (the answer is a minority of a 1,150-1,750 character chunk: G-023, G-074, G-092, G-093), and 0 strict label errors. Two golds were incomplete (G-061, G-079). Orphaned tails were common: a chunk that starts mid-list (9.2(c), 40(d)) and never names its topic. 130 of 240 top-10 slots in the 24 zero-recall regulation items held text out of force on `as_of`.
+
+**Built**
+- `regassess/chunking.py`: `context` field, the nearest parent clause's heading (first line, cut at the first `": "`, max 200 chars), set only when the parent is not inside the chunk. Chunk ids, text, boundaries, `clause_path` and `covers` unchanged: all 709 chunks compared against a copy taken before the change, 0 differences apart from `context`.
+- `embeddings.passage_text`: embedding input is `context + "\n" + text` only when `settings.parent_context` is on (`PARENT_CONTEXT` in `.env`); **default off**, so the embedding input is the plain `text`. `text` stays verbatim (Phase 13 quotes spans from it). Run files record the flag, and `compare_runs.py` warns when it differs.
+- Table fix: `Unit.is_table`; a table unit is never chosen as a parent. The three table-header contexts are gone (0 of 253 contexts start with a table pipe); the count stays 253 because the search continues back to the real clause unit.
+- `db.py`: new nullable `context` column, added with `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`. `build_index.py` embeds `passage_text`.
+- `build_chunks.py` prints how many chunks gained a context line.
+- `compare_runs.py` labels columns by file name with the timestamp stripped.
+- Gold set: G-061 gained `amd-kyc-2024-11:0005`, G-079 gained `md-dpsc-2021:0000`; notes and a revision-history block in the file. G-012 left as is.
+- README: the measured out-of-force problem statement. `docs/EVALUATION.md`: context field and gold revisions.
+
+**Files changed**: `regassess/chunking.py`, `regassess/embeddings.py`, `regassess/db.py`, `scripts/build_chunks.py`, `scripts/build_index.py`, `scripts/compare_runs.py`, `data/eval/gold_set.yaml`, `README.md`, `docs/EVALUATION.md`, `docs/PROGRESS.md`
+**Files added**: `scripts/diagnose_zeros.py`, `data/eval/runs/naive_20261015-163317.json` (current baseline, flag off), `data/eval/runs/naive_parentctx_20261015-161611.json` (the run with context on). **Renamed**: the first run is now `data/eval/runs/naive_preheadings_20261015-154630.json`. Also changed: `regassess/config.py` (`parent_context`), `scripts/run_eval.py` (records the flag).
+
+**Measured**
+- 253 of 709 chunks gained a context line (PPI 48 of 157, KYC 154 of 303, v2018 39 of 141, DPSC 11 of 87, amd-kyc-2025-06 1 of 6, the rest 0). My pre-build estimate of 256 differed because it used first-occurrence parents; the build uses the latest parent before the chunk.
+- `validate_gold_set.py`: 12 of 12 pass, 111 distinct chunks referenced, all found.
+- Baseline, k=10, depth 50:
+
+| | recall@10 | MRR | nDCG@10 | stale_rate |
+|---|---|---|---|---|
+| `naive_preheadings` (old chunks, old gold) | 0.690 | 0.475 | 0.517 | 0.545 |
+| old chunks scored on the new gold | 0.700 | 0.482 | 0.523 | 0.545 |
+| `naive_parentctx` (context ON, new gold) | 0.670 | 0.481 | 0.511 | 0.500 |
+| **`naive` (context OFF, new gold): current baseline** | **0.700** | **0.482** | **0.523** | **0.545** |
+
+The first row has a different gold hash from the others, so `compare_runs.py` warns. The second row is old rankings re-scored on the new gold by a scratch script (not committed). **The fifth row, re-recorded with the flag off after the table fix, reproduces it exactly** (0.700 / 0.482 / 0.523 / 0.545, 25 items at recall@10 = 0). 97 of its 100 rankings are identical in chunk order to the first run; the other 3 (G-013, G-022, G-074) swap two chunks with the same score to six decimals, with the same chunks in the top 10 and top 50. Postgres breaks exact score ties arbitrarily; Phase 8 could add a `chunk_id` tiebreak. With context ON, 28 items had recall@10 = 0.
+
+**Result: the headings did not improve the baseline overall.** On the like-for-like row recall@10 fell by 0.030, MRR is flat, nDCG fell by 0.012. Per item, against the first run: 4 improved, 6 worsened, 90 unchanged. Of the 4 improvements, G-004 (rank 27 to 5) and G-092 (not in top 50 to rank 4) are due to the headings; G-061 and G-079 are due to the wider gold. The other targeted items did not reach the top 10 (G-022, G-029, G-012).
+
+**Why it got worse (read from chunks, not tested):** short topical headings help ("9.2 Full-KYC PPIs", "9.1 Small PPIs (or Minimum-detail PPIs)"), but many parents are long lead-in sentences, and every sibling inherits the same one. 15.3(b), (i) and (m) now all start with "15.3 PPI issuer shall ensure that the following framework is put in place to address the safety and security concerns...", which pulls them toward the same generic meaning. G-008 (15.3(i)) fell from rank 1 to 47, G-071 and G-072 (15.3(b)) lost the top 10 or the top 50. Of 253 contexts, 166 are longer than 60 characters and 44 hit the 200-character cap. The most shared are 20 and 19 copies of "(a) Terms bearing meaning ..." and "(b) Terms bearing meaning ...", from the KYC definitions. Three contexts are table header rows (`| Sr.No. | Circular No. | Date |`), which is an implementation fault: a table unit can be found as the parent.
+
+**Decisions**
+- Context in a separate field, not edited into `text` (Mohammad approved).
+- Nearest parent only, not the ancestor chain.
+- Gold widened after the baseline was seen; disclosed in the gold file and `docs/EVALUATION.md`.
+- The chunking rule was not tuned after seeing the result. Changing it would be fitting to the evaluation set.
+- **Resolved (Mohammad):** parent-heading context is behind `PARENT_CONTEXT`, default OFF. The `context` column and code stay, so Phase 10 can compare LLM-written context against this naive version as an extra ablation row. The negative result is recorded in the README. The table-parent bug was fixed regardless.
+- No new dependency.
+
+**Verify**
+```
+.\.venv\Scripts\python.exe scripts\build_chunks.py
+.\.venv\Scripts\python.exe scripts\build_index.py
+.\.venv\Scripts\python.exe scripts\validate_gold_set.py
+.\.venv\Scripts\python.exe scripts\run_eval.py --variant naive --k 10
+.\.venv\Scripts\python.exe scripts\compare_runs.py data\eval\runs\naive_preheadings_20261015-154630.json data\eval\runs\naive_20261015-163317.json data\eval\runs\naive_parentctx_20261015-161611.json
+.\.venv\Scripts\python.exe scripts\diagnose_zeros.py --item G-004
+```
+Expected: 253 of 709 context lines, 12 passes, recall@10 0.700 for the new `naive` run. The compare command warns about the gold hash and the flag, correctly. To reproduce the context-ON run: set `PARENT_CONTEXT=true` in `.env`, run `build_index.py` and `run_eval.py`, then set it back and rebuild the index.
+
+**Suggested commit breakdown**
+1. `add zero-recall diagnosis script`: `scripts/diagnose_zeros.py`
+2. `add parent heading context to nested clause chunks`: `regassess/chunking.py`
+3. `add parent context config flag, off by default`: `regassess/config.py`
+4. `add context column and embed it behind the flag`: `regassess/db.py`, `regassess/embeddings.py`, `scripts/build_index.py`
+5. `report context line count in build_chunks`: `scripts/build_chunks.py`
+6. `label compared runs by file name and warn on flag`: `scripts/compare_runs.py`
+7. `record parent context flag in eval runs`: `scripts/run_eval.py`
+8. `widen two gold items found incomplete`: `data/eval/gold_set.yaml`
+9. `rename first naive run and add baseline runs`: `data/eval/runs/naive_preheadings_20261015-154630.json` (a rename of the Phase 7 file; if that file is already committed under the old name, stage the deletion too), `data/eval/runs/naive_parentctx_20261015-161611.json`, `data/eval/runs/naive_20261015-163317.json`
+10. `document context result, gold revisions and out-of-force finding`: `README.md`, `docs/EVALUATION.md`
+11. `update progress for phase 7 follow-up`: `docs/PROGRESS.md`
+
+Note: `regassess/config.py` also carries the earlier `query_prefix` change if that was not committed yet; check `git diff` so commit 3 does not swallow it.
+
+Flags: `data/processed/` is gitignored; do not commit it. `.gitignore` (modified) and `.env.example` (untracked) predate this work.
