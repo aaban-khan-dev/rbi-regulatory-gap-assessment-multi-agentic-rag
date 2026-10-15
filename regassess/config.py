@@ -26,6 +26,14 @@ class Settings(BaseSettings):
     gemini_api_key: str
     gemini_model: str = "gemini-3.8-flash"
     embedding_model: str = "BAAI/bge-small-en-v1.5"
+    # bge's instruction for queries. Prepended to queries only, never to passages.
+    # Set QUERY_PREFIX= (empty) in .env to switch it off for an A/B run. Changing it
+    # invalidates every recorded eval run, so run files store it.
+    query_prefix: str = "Represent this sentence for searching relevant passages: "
+    # Embed each nested-clause chunk with its parent's heading prepended (the `context`
+    # field). OFF by default: measured on the naive baseline it cost 3 points of
+    # recall@10. Turning it on needs build_index.py and a fresh baseline run.
+    parent_context: bool = False
 
     # Postgres + pgvector. Defaults match docker-compose.yml; the password has no
     # default so credentials only ever come from .env.

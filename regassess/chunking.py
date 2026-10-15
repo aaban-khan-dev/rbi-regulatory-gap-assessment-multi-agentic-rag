@@ -236,6 +236,7 @@ class ChunkStats:
     unplaced_numbers: int = 0  # sub-level number with no enclosing clause
     oversize_chunks: int = 0
     unterminated_chunks: int = 0
+    context_added: int = 0  # chunks that gained a parent-heading context line
     unplaced_examples: list[str] = field(default_factory=list)  # first few, for diagnosis
 
 
@@ -348,6 +349,7 @@ class Unit:
     heading: str | None
     page_start: int
     page_end: int
+    is_table: bool = False  # table units sit under a clause's path but are not that clause
 
 
 def _split_table(markdown: str) -> list[str]:
@@ -398,7 +400,7 @@ def build_units(elements: list[Element], stats: ChunkStats) -> list[Unit]:
             # are split by rows, header repeated in each piece.
             path = tuple(stack) or None
             for piece in _split_table(display):
-                units.append(Unit(path, piece, heading, element.page, element.page_end))
+                units.append(Unit(path, piece, heading, element.page, element.page_end, is_table=True))
             continue
 
         if element.numbering:
@@ -554,17 +556,53 @@ class ChunkResult:
         return counts
 
 
+CONTEXT_MAX_CHARS = 200
+
+
+def _heading_of(text: str) -> str:
+    """The heading part of a parent clause's text: its first line, cut at the first
+    ': ' (a list intro or "Title: body" form), capped at CONTEXT_MAX_CHARS."""
+    head = text.split("\n", 1)[0].split(": ", 1)[0].strip()
+    if len(head) > CONTEXT_MAX_CHARS:
+        head = head[:CONTEXT_MAX_CHARS].rsplit(" ", 1)[0] + "..."
+    return head
+
+
+def _parent_context(units: list[Unit], group: list[Unit], position: dict[int, int]) -> str | None:
+    """Heading of the nearest parent clause when the parent is not inside this chunk.
+
+    A chunk filed under 9.2(c) is a tail whose parent heading ("9.2 Full-KYC PPIs")
+    sits in the previous chunk, so the tail never says what it is about. The latest
+    unit before the chunk with the parent's path is used, not the first in the
+    document, because Annexes reuse paragraph numbers.
+    """
+    first = group[0]
+    if not first.path or "(" not in _path_string(first.path):
+        return None
+    parent = _path_string(first.path[:-1])
+    if any(unit.path and _path_string(unit.path) == parent for unit in group):
+        return None  # the parent is already in this chunk's text
+    for index in range(position[id(first)] - 1, -1, -1):
+        unit = units[index]
+        if unit.path and not unit.is_table and _path_string(unit.path) == parent:
+            return _heading_of(unit.text)
+    return None
+
+
 def chunk_document(doc_id: str, documents: list[DoclingDocument], manifest_entry: dict) -> ChunkResult:
     """Chunk one parsed document. Call parsing.strip_watermark on it first."""
     result = ChunkResult()
     stats = result.stats
     elements = merge_continuations(build_elements(documents, doc_id, stats), stats)
     units = build_units(elements, stats)
+    position = {id(unit): index for index, unit in enumerate(units)}
 
     for number, group in enumerate(pack_units(units)):
         first = group[0]
         text = "\n".join(unit.text for unit in group)
         covers = [_path_string(unit.path) for unit in group if unit.path]
+        context = _parent_context(units, group, position)
+        stats.context_added += context is not None
         if _size(group) > MAX_CHARS:
             stats.oversize_chunks += 1
         if not _TERMINAL.search(text.rstrip()):
@@ -577,6 +615,7 @@ def chunk_document(doc_id: str, documents: list[DoclingDocument], manifest_entry
                 "clause_depth": len(first.path) if first.path else 0,
                 "covers": covers,
                 "heading": first.heading,
+                "context": context,
                 "page_start": min(unit.page_start for unit in group),
                 "page_end": max(unit.page_end for unit in group),
                 "text": text,

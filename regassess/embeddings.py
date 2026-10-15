@@ -7,11 +7,6 @@ from sentence_transformers import SentenceTransformer
 
 from regassess.config import settings
 
-# bge is trained so that *queries* carry this instruction and passages do not.
-# Skipping it on queries measurably hurts retrieval; adding it to passages is wrong.
-QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
-
-
 @lru_cache(maxsize=1)
 def _model() -> SentenceTransformer:
     # Loaded once per process; device is pinned so a stray GPU never changes results.
@@ -32,6 +27,17 @@ def embed_texts(texts: list[str], batch_size: int = 32) -> np.ndarray:
     ).astype(np.float32)
 
 
+def passage_text(chunk: dict) -> str:
+    """What a chunk is embedded as: its verbatim text, or, when settings.parent_context
+    is on, its parent-heading context line first.
+
+    `text` itself is never altered, so citations quote the source exactly.
+    """
+    if settings.parent_context and chunk.get("context"):
+        return f"{chunk['context']}\n{chunk['text']}"
+    return chunk["text"]
+
+
 def embed_query(query: str) -> np.ndarray:
-    """Embed one search query (with the bge instruction prefix). Shape (384,)."""
-    return embed_texts([QUERY_PREFIX + query])[0]
+    """Embed one search query with settings.query_prefix (the bge instruction). Shape (384,)."""
+    return embed_texts([settings.query_prefix + query])[0]

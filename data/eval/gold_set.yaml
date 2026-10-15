@@ -51,6 +51,13 @@
 # repeat inserted text verbatim, so questions on amended KYC text list both the
 # consolidated Master Direction chunk and the amendment chunk.
 #
+# Revision history
+#   After the naive baseline run, a diagnosis of its zero-recall items found two
+#   golds that were incomplete (G-061, G-079: a second chunk also answers the
+#   query). Both were widened; see their notes. Widening after seeing misses makes
+#   the baseline slightly more lenient. It applies equally to every later variant.
+#   G-012 was reviewed and left unchanged: 10(g) is the answer to "before onboarding".
+#
 # Uniqueness: (query, as_of) is unique. The version pairs repeat a query word
 # for word at two dates on purpose, so only the date can tell them apart.
 
@@ -588,8 +595,9 @@ items:
     category: version_sensitive
     as_of: "2025-10-01"
     query: "What did the November 2024 KYC amendment change about repeating due diligence for existing customers?"
-    gold_chunk_ids: ["amd-kyc-2024-11:0002"]
-    gold_clause_paths: ["I"]
+    gold_chunk_ids: ["amd-kyc-2024-11:0002", "amd-kyc-2024-11:0005"]
+    gold_clause_paths: ["I", null]
+    note: "Widened after the Phase 7 zero-recall diagnosis, with the naive baseline already seen. 0002 is the amended 10(f): no fresh CDD for an existing customer. 0005 is the amended 56(j): no fresh KYC records from a customer when the CKYCR holds them. Both answer a question about repeating due diligence for existing customers. 0005 has no clause_path."
 
   - item_id: G-062
     source: amendment_chain
@@ -769,8 +777,9 @@ items:
     category: repealed_document
     as_of: "2024-06-01"
     query: "Which kinds of institutions were covered by RBI's 2021 digital payment security directions?"
-    gold_chunk_ids: ["md-dpsc-2021:0003"]
-    gold_clause_paths: ["2"]
+    gold_chunk_ids: ["md-dpsc-2021:0003", "md-dpsc-2021:0000"]
+    gold_clause_paths: ["2", null]
+    note: "Widened after the Phase 7 zero-recall diagnosis, with the naive baseline already seen. 0003 is the formal Applicability paragraph. 0000 is the cover letter, addressed to the same four institution types (SCBs excluding RRBs, SFBs, Payments Banks, credit card NBFCs), so it also answers which kinds of institutions were covered. 0000 has no clause_path."
 
   - item_id: G-080
     source: dpsc

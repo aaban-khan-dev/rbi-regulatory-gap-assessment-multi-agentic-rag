@@ -17,7 +17,8 @@ CREATE TABLE IF NOT EXISTS chunks (
     doc_id         TEXT NOT NULL,
     clause_path    TEXT,
     text           TEXT NOT NULL,
-    embedding      vector({EMBEDDING_DIM}) NOT NULL,
+    context        TEXT,
+    embedding     vector({EMBEDDING_DIM}) NOT NULL,
     status         TEXT,
     effective_from DATE,
     effective_to   DATE,
@@ -26,12 +27,14 @@ CREATE TABLE IF NOT EXISTS chunks (
     page_start     INT,
     page_end       INT
 );
+-- context was added after the first index build; CREATE TABLE IF NOT EXISTS would skip it.
+ALTER TABLE chunks ADD COLUMN IF NOT EXISTS context TEXT;
 CREATE INDEX IF NOT EXISTS chunks_corpus_idx ON chunks (corpus);
 CREATE INDEX IF NOT EXISTS chunks_doc_id_idx ON chunks (doc_id);
 """
 
 COLUMNS = (
-    "chunk_id", "corpus", "doc_id", "clause_path", "text", "embedding", "status",
+    "chunk_id", "corpus", "doc_id", "clause_path", "text", "context", "embedding", "status",
     "effective_from", "effective_to", "document_type", "amends", "page_start",
     "page_end",
 )
