@@ -87,6 +87,14 @@ def print_tables(rows: list[dict]) -> None:
             f"{s['oversize_chunks']:>9}{s['unterminated_chunks']:>13}"
         )
 
+    print("\nPARENT-HEADING CONTEXT (chunks that gained a context line)")
+    total_ctx = total_chunks = 0
+    for r in rows:
+        n = r["stats"].get("context_added", 0)
+        total_ctx, total_chunks = total_ctx + n, total_chunks + r["chunks"]
+        print(f"{r['doc_id']:<18}{n:>6} of {r['chunks']}")
+    print(f"{'total':<18}{total_ctx:>6} of {total_chunks}")
+
     print("\nWATERMARK CENSUS vs MANIFEST STATUS")
     print(f"{'doc_id':<18}{'manifest status':<17}{'detected':>9}{'count':>7}{'pages hit':>11}  verdict")
     disagreements = 0

@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from regassess.chunking_internal import chunk_all_policies  # noqa: E402
 from regassess.config import settings  # noqa: E402
 from regassess.db import COLUMNS, get_connection, init_schema  # noqa: E402
-from regassess.embeddings import embed_texts  # noqa: E402
+from regassess.embeddings import embed_texts, passage_text  # noqa: E402
 
 
 def load_regulation_chunks() -> list[dict]:
@@ -38,7 +38,7 @@ def main() -> None:
         sys.exit("No chunks found. Run scripts/build_chunks.py first.")
 
     print(f"Embedding {len(chunks)} chunks (CPU, batched)...")
-    vectors = embed_texts([c["text"] for c in chunks])
+    vectors = embed_texts([passage_text(c) for c in chunks])
 
     # Column order comes from db.COLUMNS so INSERT and row tuples cannot drift apart.
     placeholders = ", ".join(["%s"] * len(COLUMNS))
