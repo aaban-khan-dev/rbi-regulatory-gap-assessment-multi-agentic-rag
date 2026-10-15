@@ -19,14 +19,28 @@ documents:
   reference_number: DBR.AML.BC.No.81/14.01.001/2015-16
   issue_date: '2016-02-25'
   amended_up_to: '2025-08-14'
-  effective_from: '2016-02-25'
-  effective_to: null
+  effective_from: '2025-08-14'
+  effective_to: '2025-11-28'
   status: repealed
   document_type: master_direction
   amends: null
   url: https://rbidocs.rbi.org.in/rdocs/notification/PDFs/MD18KYCF6E92C82E1E1419D87323E3869BC9F13.PDF
   landing_page: https://www.rbi.org.in/Scripts/BS_ViewMasDirections.aspx?id=11566
   sha256: 7ee5c336f273be6970e41f11c57aa9b5eb8ed31c433aeeca0831110e775fdab9
+- doc_id: md-kyc-2016-v2018
+  title: Master Direction - Know Your Customer (KYC) Direction, 2016 (Updated as on July 12, 2018)
+  circular_number: RBI/DBR/2015-16/18
+  reference_number: DBR.AML.BC.No.81/14.01.001/2015-16
+  issue_date: '2016-02-25'
+  amended_up_to: '2018-07-12'
+  effective_from: '2018-07-12'
+  effective_to: '2019-05-29'
+  status: superseded
+  document_type: master_direction
+  amends: null
+  url: https://rbidocs.rbi.org.in/rdocs/notification/PDFs/18MDKYCD8E68EB13629A4A82BE8E06E606C57E57.PDF
+  landing_page: https://www.rbi.org.in/Scripts/BS_ViewMasDirections.aspx?id=10292
+  sha256: 5e90953071d82175d8040d7c801d70e2944689ab8a3a649fef62af01b657c09e
 - doc_id: md-dpsc-2021
   title: Master Direction on Digital Payment Security Controls
   circular_number: RBI/2020-21/74
@@ -34,7 +48,7 @@ documents:
   issue_date: '2021-02-18'
   amended_up_to: null
   effective_from: '2021-08-18'
-  effective_to: '2025-11-28'
+  effective_to: '2026-07-31'
   status: repealed
   document_type: master_direction
   amends: null
@@ -46,7 +60,9 @@ documents:
   circular_number: RBI/2024-2025/87
   reference_number: DOR.AML.REC.49/14.01.001/2024-25
   issue_date: '2024-11-06'
-  status: in_force
+  effective_from: '2024-11-06'
+  effective_to: '2025-11-28'
+  status: repealed
   document_type: amendment
   amends: md-kyc-2016
   landing_page: https://www.rbi.org.in/Scripts/NotificationUser.aspx?Id=12746
@@ -57,7 +73,9 @@ documents:
   circular_number: RBI/2025-26/51
   reference_number: DOR.AML.REC.30/14.01.001/2025-26
   issue_date: '2025-06-12'
-  status: in_force
+  effective_from: '2025-06-12'
+  effective_to: '2025-11-28'
+  status: repealed
   document_type: amendment
   amends: md-kyc-2016
   landing_page: https://rbi.org.in/Scripts/BS_CircularIndexDisplay.aspx?Id=12866
@@ -68,7 +86,9 @@ documents:
   circular_number: RBI/2025-26/75
   reference_number: DOR.AML.REC.46/14.01.001/2025-26
   issue_date: '2025-08-14'
-  status: in_force
+  effective_from: '2025-08-14'
+  effective_to: '2025-11-28'
+  status: repealed
   document_type: amendment
   amends: md-kyc-2016
   landing_page: https://rbi.org.in/Scripts/BS_CircularIndexDisplay.aspx?Id=12893
@@ -79,6 +99,8 @@ documents:
   circular_number: RBI/2023-24/126
   reference_number: CO.DPSS.POLC.No.S1092/02-14-006/2023-2024
   issue_date: '2024-02-23'
+  effective_from: '2024-02-23'
+  effective_to: null
   status: in_force
   document_type: amendment
   amends: md-ppi-2021

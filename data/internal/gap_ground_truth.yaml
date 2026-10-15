@@ -11,6 +11,9 @@
 #                the control. For GAP: the document a reader would expect to
 #                cover it, which is silent on it.
 #   note         one line on what is missing or stale (non-COVERED only)
+#   as_of        the date the obligation is assessed on, when it differs from
+#                meta.assessment_as_of. Set on the 11 md-kyc-2016 rows: that text
+#                is operative from 2025-08-14 until its repeal on 2025-11-28.
 #
 # Lookup fields
 #   sub_clause    the precise paragraph inside that chunk, when the obligation
@@ -26,8 +29,9 @@ meta:
   entity_type: non-bank PPI issuer
   assessment_as_of: "2026-10-01"
   assumptions:
-    - md-kyc-2016 as amended to 2025-08-14 is treated as the operative KYC text (md-ppi-2021 para 6.1 still applies it); pending decision.
-    - md-dpsc-2021 never bound a non-bank PPI issuer (its para 2) and is repealed on the assessment date; it appears only as a stale_source.
+    - md-kyc-2016 as amended to 2025-08-14 is repealed on 2025-11-28 and its successor is not in the corpus. Its 11 obligations are therefore assessed as of 2025-10-01 (row-level as_of), when that text was operative. The 20 md-ppi-2021 obligations use assessment_as_of.
+    - Internal policies are assessed in their current version, whatever the obligation's as_of. The assessment asks whether the company is compliant now with the rule that applied at the stated date, so regulation is versioned and controls are not. A policy's own effective_from is therefore not compared with as_of.
+    - md-dpsc-2021 never bound a non-bank PPI issuer (its para 2) and is repealed on 2026-07-31, before the assessment date; it appears only as a stale_source.
 
 obligations:
 
@@ -43,11 +47,11 @@ obligations:
   - {id: OBL-09, doc_id: md-ppi-2021, clause_path: "15.3(m)",  outcome: COVERED, policy_doc: KST-RSK-002, chunk_id: "md-ppi-2021:0107"}
   - {id: OBL-10, doc_id: md-ppi-2021, clause_path: "17.8",     outcome: COVERED, policy_doc: KST-CX-004,  chunk_id: "md-ppi-2021:0130"}
   - {id: OBL-11, doc_id: md-ppi-2021, clause_path: "18.2",     outcome: COVERED, policy_doc: KST-AUD-001, chunk_id: "md-ppi-2021:0134"}
-  - {id: OBL-12, doc_id: md-kyc-2016, clause_path: "10(g)",    outcome: COVERED, policy_doc: KST-AML-009, sub_clause: "10(i)",      chunk_id: "md-kyc-2016:0059"}
-  - {id: OBL-13, doc_id: md-kyc-2016, clause_path: "5A",       outcome: COVERED, policy_doc: KST-AML-001, chunk_id: "md-kyc-2016:0050"}
-  - {id: OBL-14, doc_id: md-kyc-2016, clause_path: "41",       outcome: COVERED, policy_doc: KST-AML-001, chunk_id: "md-kyc-2016:0143"}
-  - {id: OBL-15, doc_id: md-kyc-2016, clause_path: "46",       outcome: COVERED, policy_doc: KST-DAT-002, sub_clause: "46(a)",      chunk_id: "md-kyc-2016:0147"}
-  - {id: OBL-16, doc_id: md-kyc-2016, clause_path: "56(b)",    outcome: COVERED, policy_doc: KST-AML-004, chunk_id: "md-kyc-2016:0169"}
+  - {id: OBL-12, doc_id: md-kyc-2016, as_of: "2025-10-01", clause_path: "10(g)",    outcome: COVERED, policy_doc: KST-AML-009, sub_clause: "10(i)",      chunk_id: "md-kyc-2016:0059"}
+  - {id: OBL-13, doc_id: md-kyc-2016, as_of: "2025-10-01", clause_path: "5A",       outcome: COVERED, policy_doc: KST-AML-001, chunk_id: "md-kyc-2016:0050"}
+  - {id: OBL-14, doc_id: md-kyc-2016, as_of: "2025-10-01", clause_path: "41",       outcome: COVERED, policy_doc: KST-AML-001, chunk_id: "md-kyc-2016:0143"}
+  - {id: OBL-15, doc_id: md-kyc-2016, as_of: "2025-10-01", clause_path: "46",       outcome: COVERED, policy_doc: KST-DAT-002, sub_clause: "46(a)",      chunk_id: "md-kyc-2016:0147"}
+  - {id: OBL-16, doc_id: md-kyc-2016, as_of: "2025-10-01", clause_path: "56(b)",    outcome: COVERED, policy_doc: KST-AML-004, chunk_id: "md-kyc-2016:0169"}
 
   # ---------------- PARTIAL (6) ----------------
   - id: OBL-17
@@ -85,6 +89,7 @@ obligations:
 
   - id: OBL-21
     doc_id: md-kyc-2016
+    as_of: "2025-10-01"
     clause_path: "37"
     outcome: PARTIAL
     policy_doc: KST-AML-001
@@ -94,6 +99,7 @@ obligations:
 
   - id: OBL-22
     doc_id: md-kyc-2016
+    as_of: "2025-10-01"
     clause_path: "40(d)"
     outcome: PARTIAL
     policy_doc: KST-AML-001
@@ -131,6 +137,7 @@ obligations:
 
   - id: OBL-26
     doc_id: md-kyc-2016
+    as_of: "2025-10-01"
     clause_path: "54"
     outcome: GAP
     policy_doc: KST-AML-001
@@ -139,6 +146,7 @@ obligations:
 
   - id: OBL-27
     doc_id: md-kyc-2016
+    as_of: "2025-10-01"
     clause_path: "53"
     outcome: GAP
     policy_doc: KST-AML-009
@@ -168,6 +176,7 @@ obligations:
 
   - id: OBL-30
     doc_id: md-kyc-2016
+    as_of: "2025-10-01"
     clause_path: "38"
     outcome: STALE
     policy_doc: KST-AML-006
@@ -178,6 +187,7 @@ obligations:
 
   - id: OBL-31
     doc_id: md-kyc-2016
+    as_of: "2025-10-01"
     clause_path: "18(iii)(b)"
     outcome: STALE
     policy_doc: KST-AML-004

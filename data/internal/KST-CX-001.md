@@ -46,7 +46,7 @@
 
 4.3 **Level 3:** Nodal Officer. Named on the website with direct phone and email.
 
-4.4 **Outside Kestrel:** if the customer is not satisfied within 30 days, or is unhappy with our final reply, they can approach the RBI Integrated Ombudsman. Every final reply says so and includes the Ombudsman's complaint portal link.
+4.4 **Outside Kestrel:** if a complaint is still unresolved to the customer's satisfaction after 30 days, or is unhappy with our final reply, they can approach the RBI Integrated Ombudsman. Every final reply says so and includes the Ombudsman's complaint portal link.
 
 ## 5. Customer education
 
