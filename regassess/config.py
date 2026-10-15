@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     # field). OFF by default: measured on the naive baseline it cost 3 points of
     # recall@10. Turning it on needs build_index.py and a fresh baseline run.
     parent_context: bool = False
+    # Hybrid retrieval. rrf_k=60 is the literature default and is NOT tuned against the
+    # gold set. Each list (vector, BM25) is cut to rrf_candidates before fusion, so the
+    # fused ranking does not depend on the harness's --depth.
+    rrf_k: int = 60
+    rrf_candidates: int = 50
 
     # Postgres + pgvector. Defaults match docker-compose.yml; the password has no
     # default so credentials only ever come from .env.

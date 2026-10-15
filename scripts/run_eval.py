@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from regassess.config import settings  # noqa: E402
 from regassess.evaluation import CATEGORIES, summarize  # noqa: E402
-from regassess.variants import VARIANTS  # noqa: E402
+from regassess.variants import VARIANT_CONFIG, VARIANTS  # noqa: E402
 
 GOLD_PATH = settings.data_dir / "eval" / "gold_set.yaml"
 RUNS_DIR = settings.data_dir / "eval" / "runs"
@@ -80,6 +80,7 @@ def main() -> int:
         "embedding_model": settings.embedding_model,
         "query_prefix": settings.query_prefix,
         "parent_context": settings.parent_context,
+        "variant_config": VARIANT_CONFIG.get(args.variant, lambda: {})(),
         "gold_sha256": hashlib.sha256(gold_bytes).hexdigest(),
         "timestamp": started.isoformat(timespec="seconds"),
         "items": items,
@@ -91,6 +92,8 @@ def main() -> int:
     summary = summarize(items, args.k)
     print(f"variant={args.variant} k={args.k} depth={args.depth} model={settings.embedding_model}")
     print(f"query_prefix={settings.query_prefix!r}  parent_context={settings.parent_context}")
+    if run["variant_config"]:
+        print(f"variant_config={run['variant_config']}")
     print(f"gold_sha256={run['gold_sha256'][:16]}...  saved {path.relative_to(settings.project_root)}\n")
     print_table(summary, args.k)
     print("\nstale_rate averages only over items that have stale_chunk_ids (n_stale).")

@@ -12,3 +12,4 @@ pgvector
 numpy
 langgraph
 pydantic
+rank_bm25
