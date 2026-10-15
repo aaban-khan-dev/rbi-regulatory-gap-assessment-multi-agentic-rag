@@ -1,0 +1,993 @@
+# Retrieval gold set. LLM-drafted and human-reviewed: Claude read each gold chunk
+# and drafted the query and labels; Mohammad reviews and approves each revision.
+# Scoring rules: docs/EVALUATION.md.
+#
+# Item fields
+#   item_id            G-NNN
+#   source             OBL-xx (a row of data/internal/gap_ground_truth.yaml),
+#                      amendment_chain, dpsc, kyc_repeal, or kyc_version_pair
+#   corpus             regulation | internal: the corpus the query is run against
+#   category           straightforward | paraphrased | version_sensitive | repealed_document
+#   query              natural-language question, written without the clause's wording
+#   gold_chunk_ids     every chunk whose text answers the query (at least one)
+#   gold_clause_paths  the clause_path of each gold chunk, in the same order, exactly
+#                      as the chunker stored it (null where the chunker stored null)
+#   as_of              regulation items only: the date the question is asked
+#                      about. Every gold chunk is in force on it. Items from an
+#                      OBL row use that row's date in gap_ground_truth.yaml.
+#                      Internal items have none: the policy corpus is not versioned.
+#
+# Optional fields
+#   stale_chunk_ids    chunks on the same topic from a document version that is
+#                      not in force on as_of, which a version-unaware retriever
+#                      is likely to return instead. Input for the stale-version
+#                      retrieval rate.
+#   note               where the chunker's label differs from the real paragraph
+#
+# Categories
+#   straightforward    names the topic in the usual compliance term (escrow, PEP,
+#                      CKYCR) but not the clause's sentence
+#   paraphrased        describes the situation in everyday words, avoiding the
+#                      clause's key terms
+#   version_sensitive  the answer is text inserted or changed by an amendment
+#                      circular, the question asks what an amendment changed, or
+#                      the same question is asked at two dates and must return
+#                      md-kyc-2016-v2018 (as_of 2019-01-01) or md-kyc-2016
+#                      (as_of 2025-10-01)
+#   repealed_document  the answer depends on a repeal. Current questions
+#                      (as_of 2026-10-01) must return an in-force PPI clause, with
+#                      the repealed md-dpsc-2021 or md-kyc-2016 clause as the
+#                      stale distractor. Historical questions (as_of 2024-06-01)
+#                      must return the DPSC clause.
+#
+# Dates used for as_of
+#   2019-01-01  inside md-kyc-2016-v2018's window (2018-07-12 to 2019-05-29)
+#   2024-06-01  md-dpsc-2021 in force
+#   2025-10-01  md-kyc-2016 as amended to 2025-08-14 is the operative text: after
+#               the last amendment, before the 2025-11-28 repeal
+#   2026-10-01  assessment date; md-kyc-2016 and md-dpsc-2021 both repealed
+#
+# Gold rule: a chunk is gold if its text answers the query. Amendment circulars
+# repeat inserted text verbatim, so questions on amended KYC text list both the
+# consolidated Master Direction chunk and the amendment chunk.
+#
+# Uniqueness: (query, as_of) is unique. The version pairs repeat a query word
+# for word at two dates on purpose, so only the date can tell them apart.
+
+items:
+
+  # ======== From gap_ground_truth.yaml, regulation corpus (31) ========
+
+  - item_id: G-001
+    source: OBL-01
+    corpus: regulation
+    category: paraphrased
+    as_of: "2026-10-01"
+    query: "How much physical money can a customer put into their prepaid wallet in a single month?"
+    gold_chunk_ids: ["md-ppi-2021:0029"]
+    gold_clause_paths: ["7.6"]
+
+  - item_id: G-002
+    source: OBL-02
+    corpus: regulation
+    category: paraphrased
+    as_of: "2026-10-01"
+    query: "What oversight must a wallet company keep over the corner shops it uses to top up customers' balances?"
+    gold_chunk_ids: ["md-ppi-2021:0030"]
+    gold_clause_paths: ["7.8"]
+
+  - item_id: G-003
+    source: OBL-03
+    corpus: regulation
+    category: straightforward
+    as_of: "2026-10-01"
+    query: "What are the monthly and yearly top-up ceilings for a small wallet opened without full KYC?"
+    gold_chunk_ids: ["md-ppi-2021:0050"]
+    gold_clause_paths: ["9.1(ii)"]
+
+  - item_id: G-004
+    source: OBL-04
+    corpus: regulation
+    category: straightforward
+    as_of: "2026-10-01"
+    query: "What is the maximum balance a fully KYC-verified prepaid wallet can hold?"
+    gold_chunk_ids: ["md-ppi-2021:0052"]
+    gold_clause_paths: ["9.2(c)"]
+
+  - item_id: G-005
+    source: OBL-05
+    corpus: regulation
+    category: straightforward
+    as_of: "2026-10-01"
+    query: "What are the daily escrow funding rules for a wallet company that isn't a bank, and who must be told about a deficit?"
+    gold_chunk_ids: ["md-ppi-2021:0079"]
+    gold_clause_paths: ["12.3(ii)"]
+
+  - item_id: G-006
+    source: OBL-06
+    corpus: regulation
+    category: straightforward
+    as_of: "2026-10-01"
+    query: "How often does a PPI issuer have to revisit its security controls, and what events trigger an off-cycle look?"
+    gold_chunk_ids: ["md-ppi-2021:0100"]
+    gold_clause_paths: ["15.2"]
+
+  - item_id: G-007
+    source: OBL-07
+    corpus: regulation
+    category: paraphrased
+    as_of: "2026-10-01"
+    query: "Does every payment out of a customer's wallet need a second verification step beyond the password?"
+    gold_chunk_ids: ["md-ppi-2021:0102"]
+    gold_clause_paths: ["15.3(b)"]
+
+  - item_id: G-008
+    source: OBL-08
+    corpus: regulation
+    category: paraphrased
+    as_of: "2026-10-01"
+    query: "Should there be a waiting period before newly added money can be sent to someone else or taken out?"
+    gold_chunk_ids: ["md-ppi-2021:0105"]
+    gold_clause_paths: ["15.3(i)"]
+
+  - item_id: G-009
+    source: OBL-09
+    corpus: regulation
+    category: straightforward
+    as_of: "2026-10-01"
+    query: "Is a PPI issuer required to cap how many payments a wallet can make daily or to a single payee?"
+    gold_chunk_ids: ["md-ppi-2021:0107"]
+    gold_clause_paths: ["15.3(m)"]
+
+  - item_id: G-010
+    source: OBL-10
+    corpus: regulation
+    category: straightforward
+    as_of: "2026-10-01"
+    query: "What is the deadline for a non-bank wallet issuer to settle a customer's fraud dispute, and what if it runs out?"
+    gold_chunk_ids: ["md-ppi-2021:0130"]
+    gold_clause_paths: ["17.8"]
+
+  - item_id: G-011
+    source: OBL-11
+    corpus: regulation
+    category: paraphrased
+    as_of: "2026-10-01"
+    query: "What is the yearly IT audit filing requirement for a non-bank wallet issuer, and what accreditation must the auditor have?"
+    gold_chunk_ids: ["md-ppi-2021:0134"]
+    gold_clause_paths: ["18.2"]
+
+  - item_id: G-012
+    source: OBL-12
+    corpus: regulation
+    category: straightforward
+    as_of: "2025-10-01"
+    query: "Does the KYC direction require checking new customers against terrorist and sanctions designations before onboarding?"
+    gold_chunk_ids: ["md-kyc-2016:0059"]
+    gold_clause_paths: ["10(g)"]
+
+  - item_id: G-013
+    source: OBL-13
+    corpus: regulation
+    category: paraphrased
+    as_of: "2025-10-01"
+    query: "How often must we assess our own exposure to financial crime across customers, products and channels, and who signs off the result?"
+    gold_chunk_ids: ["md-kyc-2016:0050"]
+    gold_clause_paths: ["5A"]
+
+  - item_id: G-014
+    source: OBL-14
+    corpus: regulation
+    category: paraphrased
+    as_of: "2025-10-01"
+    query: "What extra steps are needed before onboarding a customer who holds high public office abroad?"
+    gold_chunk_ids: ["md-kyc-2016:0143"]
+    gold_clause_paths: ["41"]
+
+  - item_id: G-015
+    source: OBL-15
+    corpus: regulation
+    category: paraphrased
+    as_of: "2025-10-01"
+    query: "For how many years do we need to keep details of customer payments under the anti-money-laundering rules?"
+    gold_chunk_ids: ["md-kyc-2016:0147"]
+    gold_clause_paths: ["46"]
+
+  - item_id: G-016
+    source: OBL-16
+    corpus: regulation
+    category: straightforward
+    as_of: "2025-10-01"
+    query: "How soon after onboarding must a customer's identity file be sent to the central KYC registry?"
+    gold_chunk_ids: ["md-kyc-2016:0169"]
+    gold_clause_paths: ["56(b)"]
+
+  - item_id: G-017
+    source: OBL-17
+    corpus: regulation
+    category: paraphrased
+    as_of: "2026-10-01"
+    query: "How many years of wallet payment history must a prepaid issuer preserve for regulators?"
+    gold_chunk_ids: ["md-ppi-2021:0025"]
+    gold_clause_paths: ["6"]
+
+  - item_id: G-018
+    source: OBL-18
+    corpus: regulation
+    category: straightforward
+    as_of: "2026-10-01"
+    query: "How much cash can a customer take out of a non-bank full-KYC wallet per transaction and per month?"
+    gold_chunk_ids: ["md-ppi-2021:0058"]
+    gold_clause_paths: ["9.2(n)"]
+
+  - item_id: G-019
+    source: OBL-19
+    corpus: regulation
+    category: straightforward
+    as_of: "2026-10-01"
+    query: "How often must an auditor certify escrow adequacy to RBI, and how soon after the period ends is it due?"
+    gold_chunk_ids: ["md-ppi-2021:0089"]
+    gold_clause_paths: ["12.3(ix)"]
+
+  - item_id: G-020
+    source: OBL-20
+    corpus: regulation
+    category: paraphrased
+    as_of: "2026-10-01"
+    query: "What must a wallet issuer do with wallets nobody has used for a year?"
+    gold_chunk_ids: ["md-ppi-2021:0097"]
+    gold_clause_paths: ["13.6"]
+
+  - item_id: G-021
+    source: OBL-21
+    corpus: regulation
+    category: paraphrased
+    as_of: "2025-10-01"
+    query: "How frequently should we re-examine which customers we rate as high, medium or low risk?"
+    gold_chunk_ids: ["md-kyc-2016:0123"]
+    gold_clause_paths: ["37"]
+
+  - item_id: G-022
+    source: OBL-22
+    corpus: regulation
+    category: paraphrased
+    as_of: "2025-10-01"
+    query: "How should customers onboarded entirely online, without ever meeting staff or doing a video call, be treated for monitoring?"
+    gold_chunk_ids: ["md-kyc-2016:0142"]
+    gold_clause_paths: ["40(d)"]
+
+  - item_id: G-023
+    source: OBL-23
+    corpus: regulation
+    category: paraphrased
+    as_of: "2026-10-01"
+    query: "Do we need to watch for individual wallets that get an unusually high number of reversed purchases?"
+    gold_chunk_ids: ["md-ppi-2021:0098"]
+    gold_clause_paths: ["14"]
+
+  - item_id: G-024
+    source: OBL-24
+    corpus: regulation
+    category: straightforward
+    as_of: "2026-10-01"
+    query: "What grievance statistics does a wallet company that isn't a bank owe the regulator, and how often?"
+    gold_chunk_ids: ["md-ppi-2021:0115"]
+    gold_clause_paths: ["16.5"]
+
+  - item_id: G-025
+    source: OBL-25
+    corpus: regulation
+    category: paraphrased
+    as_of: "2026-10-01"
+    query: "What senior governance oversight is required for fraud losses that customers say they never approved?"
+    gold_chunk_ids: ["md-ppi-2021:0132"]
+    gold_clause_paths: ["17.10"]
+
+  - item_id: G-026
+    source: OBL-26
+    corpus: regulation
+    category: straightforward
+    as_of: "2025-10-01"
+    query: "What extra checks apply to customers and dealings linked to countries on the FATF grey or black list?"
+    gold_chunk_ids: ["md-kyc-2016:0165"]
+    gold_clause_paths: ["54"]
+
+  - item_id: G-027
+    source: OBL-27
+    corpus: regulation
+    category: straightforward
+    as_of: "2025-10-01"
+    query: "How often must we check customers against the UN designations relating to North Korea?"
+    gold_chunk_ids: ["md-kyc-2016:0164"]
+    gold_clause_paths: ["53"]
+
+  - item_id: G-028
+    source: OBL-28
+    corpus: regulation
+    category: repealed_document
+    as_of: "2026-10-01"
+    query: "If our wallet platform suffers a cyber attack, who at RBI and in government must we tell, and how fast?"
+    gold_chunk_ids: ["md-ppi-2021:0109"]
+    gold_clause_paths: ["15.6"]
+    stale_chunk_ids: ["md-dpsc-2021:0049"]
+
+  - item_id: G-029
+    source: OBL-29
+    corpus: regulation
+    category: repealed_document
+    as_of: "2026-10-01"
+    query: "Should a wallet issuer pay an outside firm to find and remove fake copies of its app and phishing sites?"
+    gold_chunk_ids: ["md-ppi-2021:0136"]
+    gold_clause_paths: ["18.3(b)"]
+    stale_chunk_ids: ["md-dpsc-2021:0033"]
+
+  - item_id: G-030
+    source: OBL-30
+    corpus: regulation
+    category: version_sensitive
+    as_of: "2025-10-01"
+    query: "Can a customer we rate as safe keep using their account after their KYC refresh date passes, and for how long?"
+    gold_chunk_ids: ["md-kyc-2016:0124", "amd-kyc-2025-06:0005"]
+    gold_clause_paths: ["38", "4(i)"]
+    note: "Proviso inserted by amd-kyc-2025-06 (2025-06-12). As of 2025-10-01 the grace runs one year from the due date or to June 30, 2026, whichever is later."
+
+  - item_id: G-031
+    source: OBL-31
+    corpus: regulation
+    category: version_sensitive
+    as_of: "2025-10-01"
+    query: "On a video identity call, can the check that the person is real and present be used to turn away customers with disabilities?"
+    gold_chunk_ids: ["md-kyc-2016:0086", "amd-kyc-2025-08:0004"]
+    gold_clause_paths: ["18(iii)(b)", "4"]
+    note: "Sentence inserted by amd-kyc-2025-08 4(v), which the chunker merged into the chunk filed under 4."
+
+  # ======== From gap_ground_truth.yaml, internal corpus (26; GAP rows have no control) ========
+
+  - item_id: G-032
+    source: OBL-01
+    corpus: internal
+    category: paraphrased
+    query: "Which of our controls limits how much physical money a customer can deposit through outlets each month?"
+    gold_chunk_ids: ["KST-PRD-001:0002"]
+    gold_clause_paths: ["Wallet Product and Limits Policy > 3. How money comes in"]
+
+  - item_id: G-033
+    source: OBL-02
+    corpus: internal
+    category: straightforward
+    query: "How often do we formally review each agent outlet?"
+    gold_chunk_ids: ["KST-AGT-001:0004"]
+    gold_clause_paths: ["Kestrel Points Agent Network Policy > 5. Supervision and performance review"]
+
+  - item_id: G-034
+    source: OBL-03
+    corpus: internal
+    category: straightforward
+    query: "What top-up limits do we enforce on the entry-level wallet?"
+    gold_chunk_ids: ["KST-PRD-001:0002"]
+    gold_clause_paths: ["Wallet Product and Limits Policy > 3. How money comes in"]
+
+  - item_id: G-035
+    source: OBL-04
+    corpus: internal
+    category: straightforward
+    query: "What is the highest balance we allow on a fully verified wallet?"
+    gold_chunk_ids: ["KST-PRD-001:0002"]
+    gold_clause_paths: ["Wallet Product and Limits Policy > 3. How money comes in"]
+
+  - item_id: G-036
+    source: OBL-05
+    corpus: internal
+    category: paraphrased
+    query: "What if the funds we ring-fence for users fall short of what we owe them at the end of the day?"
+    gold_chunk_ids: ["KST-FIN-003:0002"]
+    gold_clause_paths: ["Escrow Safeguarding and Reconciliation Procedure > 3. Nightly safeguarding cycle"]
+
+  - item_id: G-037
+    source: OBL-06
+    corpus: internal
+    category: paraphrased
+    query: "What triggers a fresh look at our cybersecurity safeguards outside the yearly review?"
+    gold_chunk_ids: ["KST-SEC-001:0002"]
+    gold_clause_paths: ["Information Security Policy > 3. Risk-based control set"]
+
+  - item_id: G-038
+    source: OBL-07
+    corpus: internal
+    category: paraphrased
+    query: "What has to happen on the user's side before funds can leave their account?"
+    gold_chunk_ids: ["KST-SEC-007:0003"]
+    gold_clause_paths: ["Customer Authentication Standard > 4. Money leaving a wallet"]
+
+  - item_id: G-039
+    source: OBL-08
+    corpus: internal
+    category: paraphrased
+    query: "Is there a delay before a brand-new customer, or someone who just added a recipient, can send money on?"
+    gold_chunk_ids: ["KST-RSK-002:0003"]
+    gold_clause_paths: ["Fraud Risk Management Framework > 4. Hold periods on fresh accounts, fresh money and fresh payees"]
+
+  - item_id: G-040
+    source: OBL-09
+    corpus: internal
+    category: straightforward
+    query: "Is there any cap on how many transfers a single wallet can push through daily?"
+    gold_chunk_ids: ["KST-RSK-002:0004"]
+    gold_clause_paths: ["Fraud Risk Management Framework > 5. Payment-count ceilings"]
+
+  - item_id: G-041
+    source: OBL-10
+    corpus: internal
+    category: straightforward
+    query: "How long can an unauthorised-debit complaint stay unresolved before we have to settle it regardless?"
+    gold_chunk_ids: ["KST-CX-004:0004"]
+    gold_clause_paths: ["Unauthorised Transactions and Customer Liability Policy > 5. Timelines"]
+
+  - item_id: G-042
+    source: OBL-11
+    corpus: internal
+    category: straightforward
+    query: "Who audits our payment systems externally each year and when does the report go to RBI?"
+    gold_chunk_ids: ["KST-AUD-001:0002"]
+    gold_clause_paths: ["IT and System Audit Charter > 3. Annual external payment-system audit"]
+
+  - item_id: G-043
+    source: OBL-12
+    corpus: internal
+    category: straightforward
+    query: "Can a wallet be activated before the applicant is cleared against sanctions lists?"
+    gold_chunk_ids: ["KST-AML-009:0003"]
+    gold_clause_paths: ["Sanctions and Name Screening Procedure > 4. Screening points"]
+
+  - item_id: G-044
+    source: OBL-13
+    corpus: internal
+    category: straightforward
+    query: "How often do we run our firm-wide financial crime risk assessment and who receives it?"
+    gold_chunk_ids: ["KST-AML-001:0002"]
+    gold_clause_paths: ["KYC, AML and CFT Policy > 3. Enterprise ML/TF risk assessment"]
+
+  - item_id: G-045
+    source: OBL-14
+    corpus: internal
+    category: paraphrased
+    query: "What sign-off do we need to take on a politician or senior official as a customer?"
+    gold_chunk_ids: ["KST-AML-001:0005"]
+    gold_clause_paths: ["KYC, AML and CFT Policy > 6. Politically exposed persons"]
+
+  - item_id: G-046
+    source: OBL-15
+    corpus: internal
+    category: straightforward
+    query: "How long do we keep customer transaction records?"
+    gold_chunk_ids: ["KST-DAT-002:0002"]
+    gold_clause_paths: ["Records Retention Schedule > 3. Schedule"]
+
+  - item_id: G-047
+    source: OBL-16
+    corpus: internal
+    category: straightforward
+    query: "How many days do we have to lodge a newly verified customer's file with the national KYC repository?"
+    gold_chunk_ids: ["KST-AML-004:0004"]
+    gold_clause_paths: ["Customer Onboarding and CKYCR SOP > 5. Central KYC Records Registry"]
+
+  - item_id: G-048
+    source: OBL-17
+    corpus: internal
+    category: straightforward
+    query: "Is our retention period for wallet payment logs long enough for the prepaid instrument rules?"
+    gold_chunk_ids: ["KST-DAT-002:0002"]
+    gold_clause_paths: ["Records Retention Schedule > 3. Schedule"]
+
+  - item_id: G-049
+    source: OBL-18
+    corpus: internal
+    category: straightforward
+    query: "How do we count cash-out limits when a customer withdraws at both agents and ATMs?"
+    gold_chunk_ids: ["KST-PRD-001:0003"]
+    gold_clause_paths: ["Wallet Product and Limits Policy > 4. How money goes out"]
+
+  - item_id: G-050
+    source: OBL-19
+    corpus: internal
+    category: paraphrased
+    query: "What's our timeline for sending RBI the auditor's sign-off on safeguarded customer funds each quarter?"
+    gold_chunk_ids: ["KST-FIN-003:0005"]
+    gold_clause_paths: ["Escrow Safeguarding and Reconciliation Procedure > 6. Auditor certification"]
+
+  - item_id: G-051
+    source: OBL-20
+    corpus: internal
+    category: paraphrased
+    query: "What happens to a wallet that has sat untouched for a year?"
+    gold_chunk_ids: ["KST-OPS-021:0002"]
+    gold_clause_paths: ["Dormant Wallet Lifecycle SOP > 3. Lifecycle"]
+
+  - item_id: G-052
+    source: OBL-21
+    corpus: internal
+    category: straightforward
+    query: "How often are customer risk bands recalculated?"
+    gold_chunk_ids: ["KST-AML-001:0004"]
+    gold_clause_paths: ["KYC, AML and CFT Policy > 5. Customer risk rating"]
+
+  - item_id: G-053
+    source: OBL-22
+    corpus: internal
+    category: straightforward
+    query: "How do we monitor customers who signed up remotely through DigiLocker or a registry download?"
+    gold_chunk_ids: ["KST-AML-001:0004", "KST-AML-004:0002"]
+    gold_clause_paths: ["KYC, AML and CFT Policy > 5. Customer risk rating", "Customer Onboarding and CKYCR SOP > 3. Upgrading to Plus"]
+
+  - item_id: G-054
+    source: OBL-28
+    corpus: internal
+    category: straightforward
+    query: "When a security breach hits our platform, which outside parties do we notify and how do we reach them?"
+    gold_chunk_ids: ["KST-SEC-012:0003"]
+    gold_clause_paths: ["Security Incident Response Plan > 4. Stakeholder contact register"]
+
+  - item_id: G-055
+    source: OBL-29
+    corpus: internal
+    category: straightforward
+    query: "Do we use an external vendor to take down fake apps and phishing websites?"
+    gold_chunk_ids: ["KST-SEC-015:0001", "KST-SEC-015:0003"]
+    gold_clause_paths: ["Brand Protection and Anti-Phishing Procedure > 2. Ownership", "Brand Protection and Anti-Phishing Procedure > 4. Takedown"]
+
+  - item_id: G-056
+    source: OBL-30
+    corpus: internal
+    category: straightforward
+    query: "What happens to a customer's wallet when their periodic KYC update is overdue?"
+    gold_chunk_ids: ["KST-AML-006:0004"]
+    gold_clause_paths: ["Periodic KYC Refresh SOP > 5. Missed refresh"]
+
+  - item_id: G-057
+    source: OBL-31
+    corpus: internal
+    category: paraphrased
+    query: "What do we do when an applicant physically can't perform the movements our video verification asks for?"
+    gold_chunk_ids: ["KST-AML-004:0003"]
+    gold_clause_paths: ["Customer Onboarding and CKYCR SOP > 4. Video verification calls"]
+
+  # ======== Amendment chain: KYC 38 and other amended KYC paragraphs, PPI 10.2 (13) ========
+
+  - item_id: G-058
+    source: amendment_chain
+    corpus: regulation
+    category: version_sensitive
+    as_of: "2025-10-01"
+    query: "Which 2025 amendment introduced a grace period for low-risk customers whose KYC update is overdue?"
+    gold_chunk_ids: ["amd-kyc-2025-06:0005"]
+    gold_clause_paths: ["4(i)"]
+
+  - item_id: G-059
+    source: amendment_chain
+    corpus: regulation
+    category: version_sensitive
+    as_of: "2025-10-01"
+    query: "How many reminders must we send customers before and after their periodic KYC due date, and must any be on paper?"
+    gold_chunk_ids: ["md-kyc-2016:0136", "amd-kyc-2025-06:0005"]
+    gold_clause_paths: ["38(b)(ii)(e)", "4(i)"]
+    note: "Real paragraph is 38(e), inserted by amd-kyc-2025-06 4(iii); the chunker labels it 38(b)(ii)(e) and merges 4(iii) into 4(i)."
+
+  - item_id: G-060
+    source: amendment_chain
+    corpus: regulation
+    category: version_sensitive
+    as_of: "2025-10-01"
+    query: "Can a bank's field agents collect a customer's confirmation that their KYC details haven't changed?"
+    gold_chunk_ids: ["md-kyc-2016:0127", "amd-kyc-2025-06:0005"]
+    gold_clause_paths: ["38(a)(iia)", "4(i)"]
+    note: "38(a)(iia) inserted by amd-kyc-2025-06 4(ii), merged by the chunker into 4(i)."
+
+  - item_id: G-061
+    source: amendment_chain
+    corpus: regulation
+    category: version_sensitive
+    as_of: "2025-10-01"
+    query: "What did the November 2024 KYC amendment change about repeating due diligence for existing customers?"
+    gold_chunk_ids: ["amd-kyc-2024-11:0002"]
+    gold_clause_paths: ["I"]
+
+  - item_id: G-062
+    source: amendment_chain
+    corpus: regulation
+    category: version_sensitive
+    as_of: "2025-10-01"
+    query: "Does an existing verified customer need to go through identity checks again to take a second product from us?"
+    gold_chunk_ids: ["md-kyc-2016:0058", "amd-kyc-2024-11:0002"]
+    gold_clause_paths: ["10(f)", "I"]
+
+  - item_id: G-063
+    source: amendment_chain
+    corpus: regulation
+    category: version_sensitive
+    as_of: "2025-10-01"
+    query: "How quickly must fresh information we get from an existing customer be passed on to the central KYC registry?"
+    gold_chunk_ids: ["md-kyc-2016:0172", "amd-kyc-2024-11:0004"]
+    gold_clause_paths: ["56(g)", "III"]
+    note: "Paragraph 56(h) as amended by amd-kyc-2024-11 IV. Both chunks are filed under an earlier label."
+
+  - item_id: G-064
+    source: amendment_chain
+    corpus: regulation
+    category: version_sensitive
+    as_of: "2025-10-01"
+    query: "When may we ask a customer to resubmit documents even though their record can be pulled from the central registry?"
+    gold_chunk_ids: ["md-kyc-2016:0173", "amd-kyc-2024-11:0005"]
+    gold_clause_paths: ["56(i)", null]
+    note: "Paragraph 56(j) as amended by amd-kyc-2024-11 IV. The amendment chunk is a page-3 continuation with no clause_path."
+
+  - item_id: G-065
+    source: amendment_chain
+    corpus: regulation
+    category: version_sensitive
+    as_of: "2025-10-01"
+    query: "Are we allowed to turn down a disabled applicant's onboarding without documenting why?"
+    gold_chunk_ids: ["md-kyc-2016:0061", "amd-kyc-2025-08:0004"]
+    gold_clause_paths: ["11", "4"]
+    note: "Text inserted into paragraph 11 by amd-kyc-2025-08 4(ii)."
+
+  - item_id: G-066
+    source: amendment_chain
+    corpus: regulation
+    category: version_sensitive
+    as_of: "2025-10-01"
+    query: "Can we lean on KYC done by another firm for a one-off payment of at least Rs 50,000?"
+    gold_chunk_ids: ["md-kyc-2016:0064", "amd-kyc-2025-08:0004"]
+    gold_clause_paths: ["14", "4"]
+    note: "Occasional-transaction words inserted into paragraph 14 by amd-kyc-2025-08 4(iii)."
+
+  - item_id: G-067
+    source: amendment_chain
+    corpus: regulation
+    category: version_sensitive
+    as_of: "2025-10-01"
+    query: "Is Aadhaar-based face matching an acceptable biometric method for e-KYC done by field staff?"
+    gold_chunk_ids: ["md-kyc-2016:0070", "amd-kyc-2025-08:0004"]
+    gold_clause_paths: ["16(iv)", "4"]
+    note: "Words inserted into Explanation 2 of paragraph 16 by amd-kyc-2025-08 4(iv)."
+
+  - item_id: G-068
+    source: amendment_chain
+    corpus: regulation
+    category: version_sensitive
+    as_of: "2026-10-01"
+    query: "What is the most money a transit-only prepaid card can hold?"
+    gold_chunk_ids: ["md-ppi-2021:0060"]
+    gold_clause_paths: ["10.2"]
+    note: "10.2 as revised by amd-ppi-2024-02. The amendment PDF does not reproduce the revised text, so only the Master Direction chunk answers."
+
+  - item_id: G-069
+    source: amendment_chain
+    corpus: regulation
+    category: version_sensitive
+    as_of: "2026-10-01"
+    query: "Which circular opened up commuter travel cards to every licensed prepaid issuer, not just some?"
+    gold_chunk_ids: ["amd-ppi-2024-02:0001"]
+    gold_clause_paths: ["2"]
+
+  - item_id: G-070
+    source: amendment_chain
+    corpus: regulation
+    category: version_sensitive
+    as_of: "2025-10-01"
+    query: "After the 2024 KYC changes, which sub-paragraphs does the note about watching riskier accounts more closely cover?"
+    gold_chunk_ids: ["amd-kyc-2024-11:0003"]
+    gold_clause_paths: ["II"]
+
+  # ======== md-dpsc-2021, repealed (18) ========
+  # Current questions: answer is the in-force PPI clause; DPSC chunk is the stale distractor.
+
+  - item_id: G-071
+    source: dpsc
+    corpus: regulation
+    category: repealed_document
+    as_of: "2026-10-01"
+    query: "What should happen after a customer types the wrong wallet password several times in a row?"
+    gold_chunk_ids: ["md-ppi-2021:0102"]
+    gold_clause_paths: ["15.3(b)"]
+    stale_chunk_ids: ["md-dpsc-2021:0044"]
+
+  - item_id: G-072
+    source: dpsc
+    corpus: regulation
+    category: repealed_document
+    as_of: "2026-10-01"
+    query: "Must wallet app sessions close automatically when the customer goes idle?"
+    gold_chunk_ids: ["md-ppi-2021:0102"]
+    gold_clause_paths: ["15.3(b)"]
+    stale_chunk_ids: ["md-dpsc-2021:0061", "md-dpsc-2021:0072"]
+
+  - item_id: G-073
+    source: dpsc
+    corpus: regulation
+    category: repealed_document
+    as_of: "2026-10-01"
+    query: "What must a payment notification sent to a wallet holder tell them?"
+    gold_chunk_ids: ["md-ppi-2021:0106"]
+    gold_clause_paths: ["15.3(l)"]
+    stale_chunk_ids: ["md-dpsc-2021:0041", "md-dpsc-2021:0042"]
+
+  - item_id: G-074
+    source: dpsc
+    corpus: regulation
+    category: repealed_document
+    as_of: "2026-10-01"
+    query: "Do we need fraud screening that adjusts scrutiny to how risky each payment looks?"
+    gold_chunk_ids: ["md-ppi-2021:0137"]
+    gold_clause_paths: ["18.3(d)"]
+    stale_chunk_ids: ["md-dpsc-2021:0045", "md-dpsc-2021:0046"]
+
+  - item_id: G-075
+    source: dpsc
+    corpus: regulation
+    category: repealed_document
+    as_of: "2026-10-01"
+    query: "Who should inspect our payment app's code for hidden malicious logic before we rely on it?"
+    gold_chunk_ids: ["md-ppi-2021:0135"]
+    gold_clause_paths: ["18.3"]
+    stale_chunk_ids: ["md-dpsc-2021:0028"]
+
+  - item_id: G-076
+    source: dpsc
+    corpus: regulation
+    category: repealed_document
+    as_of: "2026-10-01"
+    query: "Do mobile app and server logs need to feed a central security monitoring team?"
+    gold_chunk_ids: ["md-ppi-2021:0136"]
+    gold_clause_paths: ["18.3(b)"]
+    stale_chunk_ids: ["md-dpsc-2021:0022"]
+
+  - item_id: G-077
+    source: dpsc
+    corpus: regulation
+    category: repealed_document
+    as_of: "2026-10-01"
+    query: "How fast must our wallet platform be able to come back after a cyber attack or outage?"
+    gold_chunk_ids: ["md-ppi-2021:0138"]
+    gold_clause_paths: ["18.3(f)"]
+    stale_chunk_ids: ["md-dpsc-2021:0016"]
+
+  - item_id: G-078
+    source: dpsc
+    corpus: regulation
+    category: repealed_document
+    as_of: "2026-10-01"
+    query: "What must our contracts with technology vendors say about regulator inspection rights and breach disclosure?"
+    gold_chunk_ids: ["md-ppi-2021:0137"]
+    gold_clause_paths: ["18.3(d)"]
+    stale_chunk_ids: ["md-dpsc-2021:0011"]
+
+  # Historical questions: asked before repeal, so the DPSC clause is the answer.
+
+  - item_id: G-079
+    source: dpsc
+    corpus: regulation
+    category: repealed_document
+    as_of: "2024-06-01"
+    query: "Which kinds of institutions were covered by RBI's 2021 digital payment security directions?"
+    gold_chunk_ids: ["md-dpsc-2021:0003"]
+    gold_clause_paths: ["2"]
+
+  - item_id: G-080
+    source: dpsc
+    corpus: regulation
+    category: repealed_document
+    as_of: "2024-06-01"
+    query: "When did RBI's 2021 security rules for digital payment channels start to bind banks?"
+    gold_chunk_ids: ["md-dpsc-2021:0002"]
+    gold_clause_paths: ["1"]
+
+  - item_id: G-081
+    source: dpsc
+    corpus: regulation
+    category: repealed_document
+    as_of: "2024-06-01"
+    query: "Under the 2021 digital payment security rules, what were banks told to do about phones whose operating system protections had been bypassed?"
+    gold_chunk_ids: ["md-dpsc-2021:0068"]
+    gold_clause_paths: ["58"]
+
+  - item_id: G-082
+    source: dpsc
+    corpus: regulation
+    category: repealed_document
+    as_of: "2024-06-01"
+    query: "Did the 2021 digital security directions say anything about showing full account numbers in text messages?"
+    gold_chunk_ids: ["md-dpsc-2021:0036"]
+    gold_clause_paths: ["32"]
+
+  - item_id: G-083
+    source: dpsc
+    corpus: regulation
+    category: repealed_document
+    as_of: "2024-06-01"
+    query: "Which login and payment proofs were considered hard to replay or copy under the 2021 digital payment security directions?"
+    gold_chunk_ids: ["md-dpsc-2021:0037"]
+    gold_clause_paths: ["33"]
+
+  - item_id: G-084
+    source: dpsc
+    corpus: regulation
+    category: repealed_document
+    as_of: "2024-06-01"
+    query: "What protections against web attacks and traffic flooding did the 2021 digital payment security directions require?"
+    gold_chunk_ids: ["md-dpsc-2021:0019"]
+    gold_clause_paths: ["15"]
+
+  - item_id: G-085
+    source: dpsc
+    corpus: regulation
+    category: repealed_document
+    as_of: "2024-06-01"
+    query: "If a bank's payment app was licensed from a vendor, what did the 2021 directions require to protect against that supplier collapsing?"
+    gold_chunk_ids: ["md-dpsc-2021:0027"]
+    gold_clause_paths: ["23"]
+
+  - item_id: G-086
+    source: dpsc
+    corpus: regulation
+    category: repealed_document
+    as_of: "2024-06-01"
+    query: "How quickly did digital payments have to be matched up with counterparties' settlement files under the 2021 security directions?"
+    gold_chunk_ids: ["md-dpsc-2021:0049"]
+    gold_clause_paths: ["40"]
+    note: "The answer is paragraph 41, which sits inside the chunk filed under 40."
+
+  - item_id: G-087
+    source: dpsc
+    corpus: regulation
+    category: repealed_document
+    as_of: "2024-06-01"
+    query: "Under the 2021 directions, how could a customer flag a payment as fraud from their banking app?"
+    gold_chunk_ids: ["md-dpsc-2021:0058"]
+    gold_clause_paths: ["50"]
+
+  - item_id: G-088
+    source: dpsc
+    corpus: regulation
+    category: repealed_document
+    as_of: "2024-06-01"
+    query: "Did the 2021 digital payment security directions require tying the mobile app to one specific handset?"
+    gold_chunk_ids: ["md-dpsc-2021:0070"]
+    gold_clause_paths: ["60"]
+
+  # ======== md-kyc-2016, repealed 2025-11-28 (4) ========
+  # KYC questions asked on the assessment date. md-kyc-2016 must not be returned.
+  # Its successor is not in the corpus, so each item uses a question an in-force
+  # PPI clause answers. A pure KYC question on this date has no correct chunk
+  # in the corpus; that needs an abstention item type (not in this set).
+
+  - item_id: G-089
+    source: kyc_repeal
+    corpus: regulation
+    category: repealed_document
+    as_of: "2026-10-01"
+    query: "Can we open a fully verified prepaid wallet for someone through a live video identification call?"
+    gold_chunk_ids: ["md-ppi-2021:0051"]
+    gold_clause_paths: ["9.2"]
+    stale_chunk_ids: ["md-kyc-2016:0035", "md-kyc-2016:0086"]
+
+  - item_id: G-090
+    source: kyc_repeal
+    corpus: regulation
+    category: repealed_document
+    as_of: "2026-10-01"
+    query: "Which authority does a prepaid wallet issuer report dubious customer activity to these days?"
+    gold_chunk_ids: ["md-ppi-2021:0025"]
+    gold_clause_paths: ["6"]
+    stale_chunk_ids: ["md-kyc-2016:0152"]
+
+  - item_id: G-091
+    source: kyc_repeal
+    corpus: regulation
+    category: repealed_document
+    as_of: "2026-10-01"
+    query: "What identity checks are needed before issuing a wallet to an overseas traveller arriving in the country?"
+    gold_chunk_ids: ["md-ppi-2021:0061"]
+    gold_clause_paths: ["10.3"]
+    stale_chunk_ids: ["md-kyc-2016:0145"]
+
+  - item_id: G-092
+    source: kyc_repeal
+    corpus: regulation
+    category: repealed_document
+    as_of: "2026-10-01"
+    query: "What is the least customer information we need to issue a small wallet today?"
+    gold_chunk_ids: ["md-ppi-2021:0050"]
+    gold_clause_paths: ["9.1(ii)"]
+    stale_chunk_ids: ["md-kyc-2016:0100", "md-kyc-2016:0022"]
+
+  # ======== md-kyc-2016-v2018 vs md-kyc-2016: same question, two dates (8) ========
+  # Each pair repeats the query word for word. The 2018 text and the current text
+  # differ in substance, and each item's stale chunk is the other version.
+
+  - item_id: G-093
+    source: kyc_version_pair
+    corpus: regulation
+    category: version_sensitive
+    as_of: "2019-01-01"
+    query: "What does a periodic KYC update involve for an individual customer whose details haven't changed?"
+    gold_chunk_ids: ["md-kyc-2016-v2018:0055"]
+    gold_clause_paths: ["38"]
+    stale_chunk_ids: ["md-kyc-2016:0125"]
+    note: "2018: PAN verification, Aadhaar authentication, self-certification for low-risk customers."
+
+  - item_id: G-094
+    source: kyc_version_pair
+    corpus: regulation
+    category: version_sensitive
+    as_of: "2025-10-01"
+    query: "What does a periodic KYC update involve for an individual customer whose details haven't changed?"
+    gold_chunk_ids: ["md-kyc-2016:0125"]
+    gold_clause_paths: ["38(a)"]
+    stale_chunk_ids: ["md-kyc-2016-v2018:0055"]
+    note: "Current: self-declaration through registered email, mobile, ATM, digital channels or letter."
+
+  - item_id: G-095
+    source: kyc_version_pair
+    corpus: regulation
+    category: version_sensitive
+    as_of: "2019-01-01"
+    query: "For an account opened without ever meeting the customer, where must the first transaction come from?"
+    gold_chunk_ids: ["md-kyc-2016-v2018:0057"]
+    gold_clause_paths: ["40"]
+    stale_chunk_ids: ["md-kyc-2016:0142"]
+    note: "2018: first payment through the customer's KYC-complied account with another RE."
+
+  - item_id: G-096
+    source: kyc_version_pair
+    corpus: regulation
+    category: version_sensitive
+    as_of: "2025-10-01"
+    query: "For an account opened without ever meeting the customer, where must the first transaction come from?"
+    gold_chunk_ids: ["md-kyc-2016:0142"]
+    gold_clause_paths: ["40(d)"]
+    stale_chunk_ids: ["md-kyc-2016-v2018:0057"]
+    note: "Current 40(e): first transaction must be a credit from an existing KYC-complied bank account; 40(f) adds high-risk rating."
+
+  - item_id: G-097
+    source: kyc_version_pair
+    corpus: regulation
+    category: version_sensitive
+    as_of: "2019-01-01"
+    query: "How long can an account opened through Aadhaar one-time-password e-KYC run before full identification is done, and by what method?"
+    gold_chunk_ids: ["md-kyc-2016-v2018:0047"]
+    gold_clause_paths: ["17(i)"]
+    stale_chunk_ids: ["md-kyc-2016:0074"]
+    note: "2018 17(v): one year, biometric e-KYC only. The chunk also holds deleted paragraphs 18-22 and small accounts (23), merged by the chunker."
+
+  - item_id: G-098
+    source: kyc_version_pair
+    corpus: regulation
+    category: version_sensitive
+    as_of: "2025-10-01"
+    query: "How long can an account opened through Aadhaar one-time-password e-KYC run before full identification is done, and by what method?"
+    gold_chunk_ids: ["md-kyc-2016:0074"]
+    gold_clause_paths: ["17(v)"]
+    stale_chunk_ids: ["md-kyc-2016-v2018:0047"]
+    note: "Current 17(vi): one year, identification under paragraph 16 or V-CIP under paragraph 18."
+
+  - item_id: G-099
+    source: kyc_version_pair
+    corpus: regulation
+    category: version_sensitive
+    as_of: "2019-01-01"
+    query: "What must we do about customers linked to countries that apply the FATF standards poorly or not at all?"
+    gold_chunk_ids: ["md-kyc-2016-v2018:0072"]
+    gold_clause_paths: ["55"]
+    stale_chunk_ids: ["md-kyc-2016:0165"]
+    note: "Paragraph 55 in 2018, renumbered 54 later. 2018 (a): take the risks into account; no enhanced due diligence duty."
+
+  - item_id: G-100
+    source: kyc_version_pair
+    corpus: regulation
+    category: version_sensitive
+    as_of: "2025-10-01"
+    query: "What must we do about customers linked to countries that apply the FATF standards poorly or not at all?"
+    gold_chunk_ids: ["md-kyc-2016:0165"]
+    gold_clause_paths: ["54"]
+    stale_chunk_ids: ["md-kyc-2016-v2018:0072"]
+    note: "Current 54(a): apply enhanced due diligence proportionate to the risk."
